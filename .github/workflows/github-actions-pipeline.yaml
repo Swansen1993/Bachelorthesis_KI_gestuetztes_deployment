@@ -3,15 +3,16 @@ on:
   push:
     branches : [ "main" ]
 
+permissions:
+  id-token: write
+  contents: read
+
 env: 
   AWS_REGION : eu-central-1
   ROLE_TO_ASSUME: arn:aws:iam::415221799955:role/github_worklow_aws
   ECR_APP_REPO: app-repo
   ECR_LOCUST_REPO: locust-repo
 
-permissions:
-  id-token: write
-  contents: read
    
 jobs:
   Build-and-Deploy:
