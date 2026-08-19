@@ -1,0 +1,6 @@
+name: Github Actions Pipeline
+on: [push]
+jobs:
+  Push-Dockerfile-To-AWS-ECR:
+    runs-on: ubuntu-latest
+    steps:
