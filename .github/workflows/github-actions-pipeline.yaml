@@ -17,11 +17,11 @@ env:
 jobs:
   Build-and-Deploy: 
         runs-on: ubuntu-latest
-
+ 
         steps:
 
           - name: Configure AWS 
-            uses: actions/checkout@v4
+            uses: actions/checkout@v5
 
           - name: AWS_Credentials_Via_OIDC
             uses: aws-actions/configure-aws-credentials@v4
