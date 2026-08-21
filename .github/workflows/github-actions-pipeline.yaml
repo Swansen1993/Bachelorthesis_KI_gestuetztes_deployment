@@ -37,7 +37,7 @@ jobs:
             env: 
               REGISTRY: ${{steps.login-ecr.outputs.registry}}
               IMAGE_TAG: ${{github.sha}}
-            run: 
+            run: |
               docker build -t $REGISTRY/$ECR_APP_REPO:$IMAGE_TAG -t $REGISTRY/$ECR_APP_REPO:latest terraform/applikation/code &&
               docker push $REGISTRY/$ECR_APP_REPO:$IMAGE_TAG &&
               docker push $REGISTRY/$ECR_APP_REPO:latest
@@ -47,7 +47,7 @@ jobs:
             env: 
               REGISTRY: ${{steps.login-ecr.outputs.registry}}
               IMAGE_TAG: ${{github.sha}}
-            run: 
+            run: |
               docker build -t $REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG -t $REGISTRY/$ECR_LOCUST_REPO:latest terraform/tests/locust &&
               docker push $REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG &&
               docker push $REGISTRY/$ECR_LOCUST_REPO:lastest
@@ -61,7 +61,7 @@ jobs:
             env:
               REGISTRY: ${{steps.login-ecr.outputs.registry}}
               IMAGE_TAG: ${{github.sha}}
-            run:
+            run: |
               terraform init
               terraform apply-auto-approve\
               - var="app_image_uri=$REGISTRY/$ECR_APP_REPO:$IMAGE_TAG"
