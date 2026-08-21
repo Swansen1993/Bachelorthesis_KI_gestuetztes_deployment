@@ -38,9 +38,9 @@ jobs:
               REGISTRY: ${{steps.login-ecr.outputs.registry}}
               IMAGE_TAG: ${{github.sha}}
             run: 
-              docker build -t $REGISTRY/ECR_APP_REPO:$IMAGE_TAG -t $REGISTRY/ECR_APP_REPO:latest .terraform/applikation/code &&
-              docker push $REGISTRY/ECR_APP_REPO:$IMAGE_TAG &&
-              docker push $REGISTRY/ECR_APP_REPO:latest
+              docker build -t $REGISTRY/$ECR_APP_REPO:$IMAGE_TAG -t $REGISTRY/$ECR_APP_REPO:latest .terraform/applikation/code &&
+              docker push $REGISTRY/$ECR_APP_REPO:$IMAGE_TAG &&
+              docker push $REGISTRY/$ECR_APP_REPO:latest
 
 
           - name: Build and Push Locust image in AWSECR 
@@ -48,9 +48,9 @@ jobs:
               REGISTRY: ${{steps.login-ecr.outputs.registry}}
               IMAGE_TAG: ${{github.sha}}
             run: 
-              docker build -t $REGISTRY/ECR_LOCUST_REPO:$IMAGE_TAG -t $REGISTRY/ECR_LOCUST_REPO:latest .terraform/tests/locust &&
-              docker push $REGISTRY/ECR_LOCUST_REPO:$IMAGE_TAG &&
-              docker push $REGISTRY/ECR_LOCUST_REPO:lastest
+              docker build -t $REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG -t $REGISTRY/$ECR_LOCUST_REPO:latest .terraform/tests/locust &&
+              docker push $REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG &&
+              docker push $REGISTRY/$ECR_LOCUST_REPO:lastest
           
           - name: setup Terraform 
             uses: hashicorp/setup-terraform@v3
@@ -64,8 +64,8 @@ jobs:
             run:
               terraform init
               terraform apply-auto-approve\
-              - var="app_image_uri=$REGISTRY/ECR_APP_REPO:$IMAGE_TAG"
-              - var="locust_image_uri=$REGISTRY/ECR_LOCUST_REPO:$IMAGE_TAG"
+              - var="app_image_uri=$REGISTRY/$ECR_APP_REPO:$IMAGE_TAG"
+              - var="locust_image_uri=$REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG"
 
 
             
