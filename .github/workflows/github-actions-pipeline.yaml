@@ -36,7 +36,7 @@ jobs:
           - name: Build and Push App image in AWSECR
             env: 
               REGISTRY: ${{steps.login-ecr.outputs.registry}}
-              IMAGE-TAG: ${{github.sha}}
+              IMAGE_TAG: ${{github.sha}}
             run: 
               docker build -t $REGISTRY/ECR_APP_REPO:$IMAGE_TAG -t $REGISTRY/ECR_APP_REPO:latest .terraform/applikation/code &&
               docker push $REGISTRY/ECR_APP_REPO:$IMAGE_TAG &&
@@ -46,7 +46,7 @@ jobs:
           - name: Build and Push Locust image in AWSECR 
             env: 
               REGISTRY: ${{steps.login-ecr.outputs.registry}}
-              IMAGE-TAG: ${{github.sha}}
+              IMAGE_TAG: ${{github.sha}}
             run: 
               docker build -t $REGISTRY/ECR_LOCUST_REPO:$IMAGE_TAG -t $REGISTRY/ECR_LOCUST_REPO:latest .terraform/tests/locust &&
               docker push $REGISTRY/ECR_LOCUST_REPO:$IMAGE_TAG &&
@@ -60,7 +60,7 @@ jobs:
           - name: terraform Init und apply
             env:
               REGISTRY: ${{steps.login-ecr.outputs.registry}}
-              IMAGE-TAG: ${{github.sha}}
+              IMAGE_TAG: ${{github.sha}}
             run:
               terraform init
               terraform apply-auto-approve\
