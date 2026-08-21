@@ -6,7 +6,7 @@ on:
 permissions:
   id-token: write
   contents: read
-  
+   
 env: 
   AWS_REGION : eu-central-1
   ROLE_TO_ASSUME: arn:aws:iam::415221799955:role/github_worklow_aws
