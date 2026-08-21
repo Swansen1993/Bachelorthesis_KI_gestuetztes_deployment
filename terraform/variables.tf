@@ -12,7 +12,8 @@ variable "locust_image_uri" {
 }
 
 variable "s3_bucket_aws" {
-  type = string
+  type    = string
+  default = "kpi-save-bucket-415221799955-eu-central-1-an"
 }
 
 variable "variant_id" {
