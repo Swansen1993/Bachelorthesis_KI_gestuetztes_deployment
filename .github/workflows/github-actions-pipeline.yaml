@@ -12,7 +12,7 @@ env:
   ROLE_TO_ASSUME: arn:aws:iam::415221799955:role/github_worklow_aws
   ECR_APP_REPO: app-repo
   ECR_LOCUST_REPO: locust-repo
-
+ 
    
 jobs:
   Build-and-Deploy: 
@@ -50,7 +50,7 @@ jobs:
             run: |
               docker build -t $REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG -t $REGISTRY/$ECR_LOCUST_REPO:latest terraform/tests/locust &&
               docker push $REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG &&
-              docker push $REGISTRY/$ECR_LOCUST_REPO:lastest
+              docker push $REGISTRY/$ECR_LOCUST_REPO:latest
           
           - name: setup Terraform 
             uses: hashicorp/setup-terraform@v3
@@ -63,9 +63,9 @@ jobs:
               IMAGE_TAG: ${{github.sha}}
             run: |
               terraform init
-              terraform apply-auto-approve\
-              - var="app_image_uri=$REGISTRY/$ECR_APP_REPO:$IMAGE_TAG"
-              - var="locust_image_uri=$REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG"
+              terraform apply -auto-approve\
+              -var="app_image_uri=$REGISTRY/$ECR_APP_REPO:$IMAGE_TAG"
+              -var="locust_image_uri=$REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG"
 
 
             
