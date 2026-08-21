@@ -48,7 +48,7 @@ jobs:
               REGISTRY: ${{steps.login-ecr.outputs.registry}}
               IMAGE-TAG: ${{github.sha}}
             run: 
-              docker build -t $REGISTRY/ECR_LOCUST_REPO:$IMAGE_TAG -t REGISTRY/ECR_LOCUST_REPO:latest .terraform/tests/locust
+              docker build -t $REGISTRY/ECR_LOCUST_REPO:$IMAGE_TAG -t $REGISTRY/ECR_LOCUST_REPO:latest .terraform/tests/locust
               docker push $REGISTRY/ECR_LOCUST_REPO:$IMAGE_TAG
               docker push $REGISTRY/ECR_LOCUST_REPO:lastest
           
