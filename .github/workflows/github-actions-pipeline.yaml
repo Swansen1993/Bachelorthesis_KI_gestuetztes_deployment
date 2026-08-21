@@ -61,12 +61,13 @@ jobs:
             env:
               REGISTRY: ${{steps.login-ecr.outputs.registry}}
               IMAGE_TAG: ${{github.sha}}
+              TF_VAR_app_image_uri:
             working-directory: ./terraform
             run: |
               terraform init
               terraform apply -auto-approve \
               -var="app_image_uri=$REGISTRY/$ECR_APP_REPO:$IMAGE_TAG" \
-              -var="locust_image_uri=$REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG"
+              -var="locust_image_uri=$REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG" \
 
 
             
