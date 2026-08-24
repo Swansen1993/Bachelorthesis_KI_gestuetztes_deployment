@@ -82,8 +82,6 @@ resource "aws_vpc_security_group_egress_rule" "egressrulevpc" {
   cidr_ipv4         = "0.0.0.0/0"
 }
 
-
-
 resource "aws_iam_role" "aws_iam_execution_role" {
   name = "execution-role-${var.environment_name}"
   assume_role_policy = jsonencode({
@@ -97,9 +95,6 @@ resource "aws_iam_role" "aws_iam_execution_role" {
     ]
   })
 }
-
-
-
 
 resource "aws_iam_role_policy_attachment" "ecs_execute" {
   role       = aws_iam_role.aws_iam_execution_role.name
@@ -131,8 +126,9 @@ resource "aws_iam_role_policy" "s3_write_policy" {
   })
 }
 
-resource "aws_ecs_task_definition" "app_tasks" { // task definition legt die Patameter für de Container fest 
+resource "aws_ecs_task_definition" "app_tasks" { // task definition legt die Parameter für die Container fest 
   family                   = "app-${var.environment_name}"
+  execution_role_arn       = aws_iam_role.aws_iam_execution_role.arn
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = var.app_cpu
