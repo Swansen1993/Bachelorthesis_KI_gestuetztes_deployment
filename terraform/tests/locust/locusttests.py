@@ -101,7 +101,7 @@ def bench_comment_add(self):
         json={"comment" : {"body": f"benchmark comment {uuid.uuid4().hex[8]}"}},
         headers= self.headers,
         name= "/api/articles/: slug/comments [comment_add]"
-    )
+    ) 
 
 @task(1 if ACTIVE_TARGET == "pos_006_get_follower_list" else 0)
 def bench_follower_list(self):
