@@ -21,6 +21,11 @@ variable "variant_id" {
   default = "v1"
 }
 
+variable "target_method" {
+  type        = string
+  description = "name der methode die durch den Lasttest getestet wird"
+}
+
 
 variable "environments" {
   type = map(object({

@@ -37,4 +37,5 @@ module "environments" {
   locust_test_runtime    = each.value.locust_test_runtime
   s3_bucket_aws          = var.s3_bucket_aws
   variant_id             = var.variant_id
+  target_method          = var.target_method
 }

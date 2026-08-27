@@ -69,3 +69,7 @@ variable "variant_id" {
   type        = string
   default     = "v1"
 }
+
+variable "target_method" {
+  type = string
+}

@@ -134,7 +134,11 @@ resource "aws_ecs_task_definition" "app_tasks" { // task definition legt die Par
   cpu                      = var.app_cpu
   memory                   = var.app_memory
   container_definitions = jsonencode([{
-    name      = "Application_container"
+    name = "Application_container"
+    environment = [
+      { name = "TARGET_METHOD", value = var.target_method },
+      { name = "S3_BUCKET", value = var.s3_bucket_aws }
+    ]
     image     = var.app_image_uri
     essential = true
     portMappings = [{
