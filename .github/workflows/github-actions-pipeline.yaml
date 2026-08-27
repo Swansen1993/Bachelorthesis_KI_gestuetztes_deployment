@@ -1,76 +1,128 @@
 name: Github Actions Pipeline
-on: 
+on:
   push:
-    branches : [ "main" ]
+    branches: ["main"]
 
 permissions:
   id-token: write
   contents: read
-   
-env: 
-  AWS_REGION : eu-central-1
+
+env:
+  AWS_REGION: eu-central-1
   ROLE_TO_ASSUME: arn:aws:iam::415221799955:role/github_worklow_aws
   ECR_APP_REPO: app-repo
   ECR_LOCUST_REPO: locust-repo
-  
-   
+
 jobs:
-  Build-and-Deploy: 
-        runs-on: ubuntu-latest
- 
-        steps:
+  Build-and-Push:
+    runs-on: ubuntu-latest
 
-          - name: Configure AWS 
-            uses: actions/checkout@v5
+    steps:
+      - name: Configure AWS
+        uses: actions/checkout@v5
 
-          - name: AWS_Credentials_Via_OIDC
-            uses: aws-actions/configure-aws-credentials@v4
-            with:
-             aws-region: ${{env.AWS_REGION}}
-             role-to-assume: ${{env.ROLE_TO_ASSUME}}
+      - name: AWS_Credentials_Via_OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{env.AWS_REGION}}
+          role-to-assume: ${{env.ROLE_TO_ASSUME}}
 
-          - name: Login to AWSECR
-            uses: aws-actions/amazon-ecr-login@v2
-            id: login-ecr
-           
-          - name: Build and Push App image in AWSECR
-            env: 
-              REGISTRY: ${{steps.login-ecr.outputs.registry}}
-              IMAGE_TAG: ${{github.sha}}
-            run: |
-              docker build -t $REGISTRY/$ECR_APP_REPO:$IMAGE_TAG -t $REGISTRY/$ECR_APP_REPO:latest terraform/applikation/code &&
-              docker push $REGISTRY/$ECR_APP_REPO:$IMAGE_TAG &&
-              docker push $REGISTRY/$ECR_APP_REPO:latest
+      - name: Login to AWSECR
+        uses: aws-actions/amazon-ecr-login@v2
+        id: login-ecr
 
+      - name: Build and Push App image in AWSECR
+        env:
+          REGISTRY: ${{steps.login-ecr.outputs.registry}}
+          IMAGE_TAG: ${{github.sha}}
+        run: |
+          docker build -t $REGISTRY/$ECR_APP_REPO:$IMAGE_TAG -t $REGISTRY/$ECR_APP_REPO:latest terraform/applikation/code &&
+          docker push $REGISTRY/$ECR_APP_REPO:$IMAGE_TAG &&
+          docker push $REGISTRY/$ECR_APP_REPO:latest
 
-          - name: Build and Push Locust image in AWSECR 
-            env: 
-              REGISTRY: ${{steps.login-ecr.outputs.registry}}
-              IMAGE_TAG: ${{github.sha}}
-            run: |
-              docker build -t $REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG -t $REGISTRY/$ECR_LOCUST_REPO:latest terraform/tests/locust &&
-              docker push $REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG &&
-              docker push $REGISTRY/$ECR_LOCUST_REPO:latest
-          
-          - name: setup Terraform 
-            uses: hashicorp/setup-terraform@v3
-            with: 
-              terraform_version: 1.5.0
+      - name: Build and Push Locust image in AWSECR
+        env:
+          REGISTRY: ${{steps.login-ecr.outputs.registry}}
+          IMAGE_TAG: ${{github.sha}}
+        run: |
+          docker build -t $REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG -t $REGISTRY/$ECR_LOCUST_REPO:latest terraform/tests/locust &&
+          docker push $REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG &&
+          docker push $REGISTRY/$ECR_LOCUST_REPO:latest
 
-          - name: terraform Init und apply
-            env:
-              REGISTRY: ${{steps.login-ecr.outputs.registry}}
-              IMAGE_TAG: ${{github.sha}}
-              TF_VAR_app_image_uri:
-            working-directory: ./terraform
-            run: |
-              terraform init
-              terraform apply -auto-approve \
-              -var="app_image_uri=$REGISTRY/$ECR_APP_REPO:$IMAGE_TAG" \
-              -var="locust_image_uri=$REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG" \
+      - name: setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
 
+      - name: terraform Init und apply
+        env:
+          REGISTRY: ${{steps.login-ecr.outputs.registry}}
+          IMAGE_TAG: ${{github.sha}}
+          TF_VAR_app_image_uri:
+        working-directory: ./terraform
+        run: |
+          terraform init
+          terraform apply -auto-approve \
+          -var="app_image_uri=$REGISTRY/$ECR_APP_REPO:$IMAGE_TAG" \
+          -var="locust_image_uri=$REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG" \
 
-            
+  Test-with-matrix:
+    runs-on: ubuntu-latest
+    needs: Build-and-Push
+    strategy:
+      max-parallel: 1
+      matrix:
+        method:
+          - "pos_001_post_add_article"
+          - "pos_002_get_list_by_filters"
+          - "pos_003_post_article_add_many_tag"
+          - "pos_004_get_articles_favorite_exists"
+          - "pos_005_post_article_comment_into_repository"
+          - "pos_006_get_follower_list"
+          - "pos_007_post_create_follow_in_repository"
+          - "pos_012_post_follow_user"
 
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-    
+      - name: AWS Credential via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{env.AWS_REGION}}
+          role-to-assume: ${{env.ROLE_TO_ASSUME}}
+
+      - name: Login to aws_ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        id: login-ecr
+
+      - name: Setup-Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+
+      - name: Start Terraform Test (Benchmark ${{matrix.method}})
+        env:
+          REGISTRY: ${{steps.login-ecr.outputs.registry}}
+          IMAGE_TAG: ${{github.sha}}
+        working-directory: ./terraform
+        run: |
+          terraform init
+          terraform apply -auto-approve \
+          -var="app_image_uri=$REGISTRY/$ECR_APP_REPO:$IMAGE_TAG" \
+          -var="locust_image_uri=$REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG" \
+          -var="target_method=${{matrix.method}}" \
+
+      - name: Testlaufzeit abwarten
+        run: |
+          echo "Tests für Methode ${{matrix.method}} laufen in der aws ecs cloud"
+          sleep 320
+
+      - name: Terra Destroy
+        if: always()
+        working-directory: ./terraform
+        run: |
+          terraform destroy -auto-approve \
+          -var="app_image_url= dummy" \
+          -var="locust_image_url= dummy" \
+          -var="target_method=dummy" \
