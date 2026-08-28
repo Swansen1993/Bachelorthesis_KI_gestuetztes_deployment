@@ -1,6 +1,8 @@
 import os
 import uuid
-from locust import HttpUser, task , between
+from locust import HttpUser, task, between, events, stats
+import boto3
+import json
 
 ACTIVE_TARGET = os.getenv("TARGET_METHOD", "pos_001")
 
@@ -67,7 +69,6 @@ def list_by_filters_get(self):
     )
     
     
-    
 @task(1 if ACTIVE_TARGET == "pos_003_post_article_add_many_tag" else 0) 
 def add_many(self):
   unique_suffix = uuid.uuid4().hex[8]
@@ -112,7 +113,7 @@ def bench_follower_list(self):
         )
 
 
-@task(1 if ACTIVE_TARGET == ["pos_007_post_create_follow_in_repository", "pos_012_post_follow_user"] else 0)
+@task(1 if ACTIVE_TARGET in ["pos_007_post_create_follow_in_repository", "pos_012_post_follow_user"] else 0)
 def bench_create_follow(self):
     self.client.post(
         f"/api/profiles/{self.username}/follow",
@@ -128,5 +129,25 @@ def bench_sign_in_user(self):
             json={"user": {"email": self.email, "password": self.password}},
             name="/api/users/login [sign_in_user]"
         )
-        
-        
+
+
+@events.test_stop.add_listener
+def send_KPI_To_Aws_S3_Bucket(environment, **kwargs):
+    
+    bucket = os.getenv("METRICS_S3_BUCKET")
+    s3_path = os.getenv("S3_METRICS_PATH")
+    
+    if not bucket or s3_path:
+        return 
+    
+    stats = environment.runner.stats.total
+    
+    metrics_payload = { "target_method": ACTIVE_TARGET, 
+         "p95_latency_ms": round(stats.get_response_time_percentile(0.95), 2), 
+         "avg_latency_ms": round(stats.avg_response_time, 2), 
+         "requests_per_sec": round(stats.total_rps, 2), 
+         "error_rate_percent": round(stats.fail_ratio * 100, 2), 
+         "total_requests": stats.num_requests, "total_failures": stats.num_failures } 
+
+    s3_client = boto3.client("s3", region_name="eu-central-1") 
+    s3_client.put_object( Bucket=bucket, Key=s3_path, Body=json.dumps(metrics_payload, indent=2), ContentType="application/json" )

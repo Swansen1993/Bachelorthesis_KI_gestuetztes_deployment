@@ -179,6 +179,7 @@ resource "aws_ecs_task_definition" "runner_tasks" {
     essential = true
 
     environment = [
+      { name = "TARGET_METHOD", value = tostring(var.target_method) },
       { name = "TARGET_URL", value = "http://app.${var.environment_name}.local:8080" },
       { name = "LOCUST_USERS", value = tostring(var.locust_test_user_count) },
       { name = "LOCUST_SPAWN_RATE", value = tostring(var.locust_spawn_rate) },
