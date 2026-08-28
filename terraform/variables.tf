@@ -23,6 +23,7 @@ variable "variant_id" {
 
 variable "target_method" {
   type        = string
+  default     = "pos_001_post_add_article"
   description = "name der methode die durch den Lasttest getestet wird"
 }
 
