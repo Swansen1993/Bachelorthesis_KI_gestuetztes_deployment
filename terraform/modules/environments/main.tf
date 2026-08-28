@@ -77,8 +77,6 @@ resource "aws_vpc_security_group_ingress_rule" "ingressrulevpc" {
 resource "aws_vpc_security_group_egress_rule" "egressrulevpc" {
   security_group_id = aws_security_group.app_security_rules.id
   ip_protocol       = "-1"
-  from_port         = 0
-  to_port           = 0
   cidr_ipv4         = "0.0.0.0/0"
 }
 
