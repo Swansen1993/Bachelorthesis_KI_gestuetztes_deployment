@@ -5,13 +5,13 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response
 
-from conduit.core.exceptions import RateLimitExceededException
+from conduit.core.exceptions import RateLimitExceededException 
 
 
 class RateLimitingMiddleware(BaseHTTPMiddleware):
-    """ 
-    Middleware that handle requests rate limiting.
-    """
+    """  
+    Middleware  that handle requests rate limiting. 
+    """  
 
     rate_limit_duration = timedelta(minutes=1)
     rate_limit_requests = 100
