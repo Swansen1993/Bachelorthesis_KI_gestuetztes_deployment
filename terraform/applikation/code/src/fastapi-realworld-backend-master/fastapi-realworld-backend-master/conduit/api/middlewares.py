@@ -9,7 +9,7 @@ from conduit.core.exceptions import RateLimitExceededException
 
 
 class RateLimitingMiddleware(BaseHTTPMiddleware):
-    """
+    """ 
     Middleware that handle requests rate limiting.
     """
 
