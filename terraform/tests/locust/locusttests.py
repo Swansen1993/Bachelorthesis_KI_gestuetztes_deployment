@@ -4,7 +4,7 @@ from locust import HttpUser, task, between, events, stats
 import boto3
 import json
 
-ACTIVE_TARGET = os.getenv("TARGET_METHOD", "pos_001")
+ACTIVE_TARGET = os.getenv("TARGET_METHOD", "pos_001_post_add_article")
 
 class Projekt01Tests(HttpUser):
     wait_time = between(0.1, 0.3)
@@ -137,7 +137,7 @@ def send_KPI_To_Aws_S3_Bucket(environment, **kwargs):
     bucket = os.getenv("METRICS_S3_BUCKET")
     s3_path = os.getenv("S3_METRICS_PATH")
     
-    if not bucket or s3_path:
+    if not bucket or not s3_path:
         return 
     
     stats = environment.runner.stats.total
