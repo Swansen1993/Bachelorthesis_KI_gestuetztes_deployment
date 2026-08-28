@@ -107,7 +107,7 @@ jobs:
         working-directory: ./terraform
         run: |
           terraform destroy -auto-approve \
-          -var="app_image_uri= dummy" \
-          -var="locust_image_url= dummy" \
+          -var="app_image_uri=dummy" \
+          -var="locust_image_uri=dummy" \
           -var="target_method=dummy" \
           -var="variant_id=dummy"
