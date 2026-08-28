@@ -112,6 +112,7 @@ jobs:
           -var="app_image_uri=$REGISTRY/$ECR_APP_REPO:$IMAGE_TAG" \
           -var="locust_image_uri=$REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG" \
           -var="target_method=${{matrix.method}}" \
+          -var="variant_id=${{matrix.method}}" \
 
       - name: Testlaufzeit abwarten
         run: |
@@ -126,3 +127,4 @@ jobs:
           -var="app_image_url= dummy" \
           -var="locust_image_url= dummy" \
           -var="target_method=dummy" \
+          -var="variant_id=dummy"
