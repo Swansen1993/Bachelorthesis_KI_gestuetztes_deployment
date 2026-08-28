@@ -1,7 +1,7 @@
 name: Github Actions Pipeline
 on:
   push:
-    branches: ["test/*"]
+    branches: ["main"]
 
 permissions:
   id-token: write
