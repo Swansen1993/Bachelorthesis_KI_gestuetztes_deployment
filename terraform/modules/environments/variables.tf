@@ -58,7 +58,7 @@ variable "locust_test_runtime" {
 }
 
 variable "s3_bucket_aws" {
-  description = "s3 bucket für speichern der metriken in json-format"
+  description = "s3 bucket für speichern der metriken json-format"
   type        = string
 }
 
