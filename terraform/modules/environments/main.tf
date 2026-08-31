@@ -185,7 +185,7 @@ resource "aws_ecs_task_definition" "runner_tasks" {
       { name = "LOCUST_SPAWN_RATE", value = tostring(var.locust_spawn_rate) },
       { name = "LOCUST_RUN_TIME", value = tostring(var.locust_test_runtime) },
       { name = "METRICS_S3_BUCKET", value = tostring(var.s3_bucket_aws) },
-      { name = "S3_METRICS_PATH", value = "$(var.variant_id)/$(var.environment_name)/metrics.json" }
+      { name = "S3_METRICS_PATH", value = "${var.variant_id}/${var.environment_name}/metrics.json" }
     ]
   }])
 }
