@@ -72,5 +72,6 @@ variable "variant_id" {
 
 variable "target_method" {
   default = "pos_001_post_add_article"
+  description = "add article default"
   type    = string
 }

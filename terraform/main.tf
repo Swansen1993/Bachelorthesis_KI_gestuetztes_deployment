@@ -10,12 +10,12 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.0"
     }
-  }
+  }    
 }
 
 provider "aws" {
   region = var.aws_region
-}
+}  
 
 module "environments" {
   source   = "./modules/environments" // liest alle tf dateien in diesem ordner

@@ -3,7 +3,7 @@ resource "aws_vpc" "enviroments_containers" {
   enable_dns_hostnames = true // ec2 instanzen können hostnamen bekommen
   enable_dns_support   = true // aktiviert interne dns auflösung (innerhalb vpc) auflösen zu können 
   tags                 = { Name = "vpc-${var.environment_name}" }
-}
+}  
 
 resource "aws_subnet" "subnet_for_vpc" {
   vpc_id                  = aws_vpc.enviroments_containers.id // welche vpc vm soll weiter unterteilt werden ? 
