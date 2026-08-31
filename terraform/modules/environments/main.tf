@@ -46,7 +46,7 @@ resource "aws_ecs_cluster" "cluster_containers_in_vpc" {
 }
 
 resource "aws_service_discovery_private_dns_namespace" "discover_in_vpc" {
-  name = "${var.environment_name}.lokalDNS"
+  name = "${var.environment_name}.local"
   vpc  = aws_vpc.enviroments_containers.id
 }
 
