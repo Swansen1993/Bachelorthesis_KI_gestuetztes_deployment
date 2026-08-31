@@ -163,6 +163,13 @@ resource "aws_ecs_service" "app_service" { // aws_ecs_service ist die tatsächli
 }
 
 
+resource "aws_cloudwatch_log_group" "locust_logs" {
+  name              = "/ecs/locust-${var.environment_name}"
+  retention_in_days = 14
+}
+
+
+
 resource "aws_ecs_task_definition" "runner_tasks" {
   family                   = "locust_test-${var.environment_name}"
   requires_compatibilities = ["FARGATE"]
@@ -170,13 +177,24 @@ resource "aws_ecs_task_definition" "runner_tasks" {
   cpu                      = var.test_cpu
   memory                   = var.test_memory
   execution_role_arn       = aws_iam_role.aws_iam_execution_role.arn
-  task_role_arn            = aws_iam_role.locust_runner_task_role.arn
+  task_role_arn            = aws_iam_role.locust_runner_task_role.arn 
+
+
 
 
   container_definitions = jsonencode([{
     name      = "locust_test_runner"
     image     = var.locust_image_uri
     essential = true
+
+  logConfiguration = {
+    logDriver = "awslogs"
+    options = {
+    awslogs-group         = "/ecs/locust-${var.environment_name}"
+    awslogs-region        = "eu-central-1"
+    awslogs-stream-prefix = "locust"
+  }
+}
 
     environment = [
       { name = "TARGET_METHOD", value = tostring(var.target_method) },
