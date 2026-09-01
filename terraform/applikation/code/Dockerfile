@@ -1,10 +1,12 @@
 FROM python:3.11-slim
-WORKDIR /src/fastapi-realworld-backend-master/fastapi-realworld-backend-master
+WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ ./src/
+
+WORKDIR /app/src/fastapi-realworld-backend-master/fastapi-realworld-backend-master
 
 EXPOSE 8080
 

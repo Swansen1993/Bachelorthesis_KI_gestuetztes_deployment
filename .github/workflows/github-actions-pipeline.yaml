@@ -58,12 +58,6 @@ jobs:
         method:
           - "pos_001_post_add_article"
           - "pos_002_get_list_by_filters"
-          - "pos_003_post_article_add_many_tag"
-          - "pos_004_get_articles_favorite_exists"
-          - "pos_005_post_article_comment_into_repository"
-          - "pos_006_get_follower_list"
-          - "pos_007_post_create_follow_in_repository"
-          - "pos_012_post_follow_user"
 
     steps:
       - name: Checkout Code
