@@ -12,5 +12,5 @@ output "app_service_name" {
 
 output "dns_endpoint" {
   description = " lokaler DNS Punkt "
-  value       = "-app.${var.environment_name}.lokalDNS"
+  value       = "-app.${var.environment_name}.local"
 }
