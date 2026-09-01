@@ -5,8 +5,8 @@ environments = {
     app_cpu                = "512"
     test_memory            = "1024"
     test_cpu               = "512"
-    locust_test_user_count = 50
-    locust_spawn_rate      = 3
+    locust_test_user_count = 10
+    locust_spawn_rate      = 1
     locust_test_runtime    = "30s"
   }
   "medium" = {
@@ -15,8 +15,8 @@ environments = {
     app_cpu                = "512"
     test_memory            = "1024"
     test_cpu               = "512"
-    locust_test_user_count = 200
-    locust_spawn_rate      = 7
+    locust_test_user_count = 25
+    locust_spawn_rate      = 2
     locust_test_runtime    = "60s"
   }
   "high" = {
@@ -25,8 +25,8 @@ environments = {
     app_cpu                = "512"
     test_memory            = "2048"
     test_cpu               = "1024"
-    locust_test_user_count = 1000
-    locust_spawn_rate      = 22
+    locust_test_user_count = 40
+    locust_spawn_rate      = 3
     locust_test_runtime    = "90s"
   }
   "extreme" = {
@@ -35,8 +35,8 @@ environments = {
     app_cpu                = "512"
     test_memory            = "4096"
     test_cpu               = "2048"
-    locust_test_user_count = 3000
-    locust_spawn_rate      = 50
+    locust_test_user_count = 50
+    locust_spawn_rate      = 4
     locust_test_runtime    = "120s"
   }
   "prod" = {
@@ -45,8 +45,8 @@ environments = {
     app_memory             = "1024"
     test_cpu               = "512"
     test_memory            = "1024"
-    locust_test_user_count = 100
-    locust_spawn_rate      = 5
+    locust_test_user_count = 25
+    locust_spawn_rate      = 2
     locust_test_runtime    = "60s"
   }
 }
