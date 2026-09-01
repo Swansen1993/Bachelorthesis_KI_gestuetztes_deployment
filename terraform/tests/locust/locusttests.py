@@ -175,6 +175,7 @@ def send_KPI_To_Aws_S3_Bucket(environment, **kwargs):
     s3_client = boto3.client("s3", region_name="eu-central-1")
     print("DEBUG bucket:", bucket)
     print("DEBUG s3_path:", s3_path)
+    print("DEBUG target:", ACTIVE_TARGET)
     s3_client.put_object(
         Bucket=bucket,
         Key=s3_path,
