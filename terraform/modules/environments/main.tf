@@ -124,6 +124,11 @@ resource "aws_iam_role_policy" "s3_write_policy" {
   })
 }
 
+resource "aws_cloudwatch_log_group" "application_logs" {
+  name              = "/ecs/app-${var.environment_name}"
+  retention_in_days = 14
+}
+
 resource "aws_ecs_task_definition" "app_tasks" { // task definition legt die Parameter für die Container fest 
   family                   = "app-${var.environment_name}"
   execution_role_arn       = aws_iam_role.aws_iam_execution_role.arn
@@ -131,17 +136,30 @@ resource "aws_ecs_task_definition" "app_tasks" { // task definition legt die Par
   network_mode             = "awsvpc"
   cpu                      = var.app_cpu
   memory                   = var.app_memory
+
   container_definitions = jsonencode([{
     name = "Application_container"
+    image     = var.app_image_uri
+    essential = true
+
     environment = [
       { name = "TARGET_METHOD", value = var.target_method },
       { name = "S3_BUCKET", value = var.s3_bucket_aws }
     ]
-    image     = var.app_image_uri
-    essential = true
+
     portMappings = [{
       containerPort = 8080
-    hostPort = 8080 }]
+      hostPort = 8080 
+    }]
+
+    logConfiguration = {
+     logDriver = "awslogs"
+     options = {
+      awslogs-group         = "/ecs/app-${var.environment_name}"
+      awslogs-region        = "eu-central-1"
+      awslogs-stream-prefix = "application"
+     }
+    }
   }])
 }
 
