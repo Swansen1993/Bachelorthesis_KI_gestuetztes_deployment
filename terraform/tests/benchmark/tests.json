@@ -1,0 +1,5 @@
+{
+  "Locust-Test-1": "pos_001_post_add_article",
+  "Locust-Test-2": "pos_002_get_list_by_filters",
+  "db_migrate": ["python", "-m", "alembic", "-c", "alembic.ini", "upgrade", "head"]
+}

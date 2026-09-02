@@ -15,6 +15,7 @@ output "environment_infos" {
     for env, mod in module.environments : env => {
       cluster_name       = mod.ecs_cluster_name
       runner_task_family = mod.runner_task_family
+      app_task_family    = mod.app_task_family
       security_group_id  = mod.app_security_group_id
       subnet_id          = mod.subnet_id
       db_address         = mod.db_address

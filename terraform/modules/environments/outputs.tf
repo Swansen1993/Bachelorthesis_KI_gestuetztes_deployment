@@ -19,6 +19,10 @@ output "runner_task_family" {
   value = aws_ecs_task_definition.runner_tasks.family
 }
 
+output "app_task_family" {
+  value = aws_ecs_task_definition.app_tasks.family
+}
+
 output "app_security_group_id" {
   value = aws_security_group.app_security_rules.id
 }

@@ -12,6 +12,7 @@ env:
   ROLE_TO_ASSUME: arn:aws:iam::415221799955:role/github_worklow_aws
   ECR_APP_REPO: app-repo
   ECR_LOCUST_REPO: locust-repo
+  VARIANT_ID: v1
   TF_VAR_db_username: ${{ secrets.DB_USERNAME }}
   TF_VAR_db_name: ${{ secrets.DB_NAME }}
   TF_VAR_jwt_secret_key: ${{ secrets.JWT_SECRET_KEY }}
@@ -95,16 +96,17 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: environment_infos
-          path: /tmp/environment_infos.jso
-  Benchmark:
+          path: /tmp/environment_infos.json
+          retention-days: 1
+
+  Locust-Runner-1:
     runs-on: ubuntu-latest
     needs: Deploy
     strategy:
-      max-parallel: 1
+      fail-fast: false
+      max-parallel: 5
       matrix:
-        method:
-          - "pos_001_post_add_article"
-          - "pos_002_get_list_by_filters"
+        env: ["low", "medium", "high", "extreme", "prod"]
 
     steps:
       - name: Checkout Code
@@ -122,9 +124,39 @@ jobs:
           name: environment_infos
           path: /tmp/infra
 
-      - name: Testlauf fuer Methode ${{matrix.method}}
-        run: |
-          echo "Benchmark ${{matrix.method}} gegen bestehende Infrastruktur"
-          echo "TODOs Schritt 2: DB-Reset + Locust One-off-Task je Umgebung"
-          cat /tmp/infra/environment_infos.json
-          sleep 320
+      - name: DB leeren in ${{ matrix.env }}
+        run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json --env "${{ matrix.env }}"
+
+      - name: Locust-Test-1 in ${{ matrix.env }}
+        run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json --env "${{ matrix.env }}" --test "Locust-Test-1"
+
+  Locust-Runner-2:
+    runs-on: ubuntu-latest
+    needs: Locust-Runner-1
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        env: ["low", "medium", "high", "extreme", "prod"]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: AWS Credential via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{env.AWS_REGION}}
+          role-to-assume: ${{env.ROLE_TO_ASSUME}}
+
+      - name: Download environment_infos
+        uses: actions/download-artifact@v4
+        with:
+          name: environment_infos
+          path: /tmp/infra
+
+      - name: DB leeren in ${{ matrix.env }}
+        run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json --env "${{ matrix.env }}"
+
+      - name: Locust-Test-2 in ${{ matrix.env }}
+        run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json --env "${{ matrix.env }}" --test "Locust-Test-2"
