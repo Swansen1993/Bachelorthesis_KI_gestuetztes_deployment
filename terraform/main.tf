@@ -38,4 +38,10 @@ module "environments" {
   s3_bucket_aws          = var.s3_bucket_aws
   variant_id             = var.variant_id
   target_method          = var.target_method
+  postgres_host          = var.postgres_host
+  postgres_port          = var.postgres_port
+  postgres_user          = var.postgres_user
+  postgres_password      = var.postgres_password
+  postgres_db            = var.postgres_db
+  jwt_secret_key         = var.jwt_secret_key
 }

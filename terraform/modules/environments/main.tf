@@ -144,7 +144,15 @@ resource "aws_ecs_task_definition" "app_tasks" { // task definition legt die Par
 
     environment = [
       { name = "TARGET_METHOD", value = var.target_method },
-      { name = "S3_BUCKET", value = var.s3_bucket_aws }
+      { name = "S3_BUCKET", value = var.s3_bucket_aws },
+      { name = "APP_ENV", value = "prod" },
+      { name = "POSTGRES_HOST", value = var.postgres_host },
+      { name = "POSTGRES_PORT", value = tostring(var.postgres_port) },
+      { name = "POSTGRES_USER", value = var.postgres_user },
+      { name = "POSTGRES_PASSWORD", value = var.postgres_password },
+      { name = "POSTGRES_DB", value = var.postgres_db },
+      { name = "JWT_SECRET_KEY", value = var.jwt_secret_key },
+      { name = "SECRET_KEY", value = var.jwt_secret_key }
     ]
 
     portMappings = [{
