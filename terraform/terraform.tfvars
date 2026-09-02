@@ -40,14 +40,4 @@ environments = {
     locust_spawn_rate      = 4
     locust_test_runtime    = "120s"
   }
-  "prod" = {
-    vpc_cidr               = "10.5.0.0/16"
-    app_memory             = "2048"
-    app_cpu                = "1024"
-    test_cpu               = "512"
-    test_memory            = "1024"
-    locust_test_user_count = 25
-    locust_spawn_rate      = 2
-    locust_test_runtime    = "60s"
-  }
 }
