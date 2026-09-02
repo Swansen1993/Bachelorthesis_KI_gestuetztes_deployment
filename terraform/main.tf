@@ -44,4 +44,7 @@ module "environments" {
   postgres_password      = var.postgres_password
   postgres_db            = var.postgres_db
   jwt_secret_key         = var.jwt_secret_key
+  db_username            = var.db_username
+  db_password            = var.db_password
+  db_name                = var.db_name
 }

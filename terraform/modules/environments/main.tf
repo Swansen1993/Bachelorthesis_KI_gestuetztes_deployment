@@ -80,6 +80,55 @@ resource "aws_vpc_security_group_egress_rule" "egressrulevpc" {
   cidr_ipv4         = "0.0.0.0/0"
 }
 
+resource "aws_db_subnet_group" "db_subnet_group" {
+  name       = "db-subnet-${var.environment_name}"
+  subnet_ids = [aws_subnet.subnet_for_vpc.id]
+
+  tags = {
+    Name = "db-subnet-${var.environment_name}"
+  }
+}
+
+resource "aws_security_group" "db_security_rules" {
+  name   = "db-sg-${var.environment_name}"
+  vpc_id = aws_vpc.enviroments_containers.id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "db_ingress_from_app" {
+  security_group_id            = aws_security_group.db_security_rules.id
+  referenced_security_group_id = aws_security_group.app_security_rules.id
+  ip_protocol                  = "tcp"
+  from_port                    = 5432
+  to_port                      = 5432
+}
+
+resource "aws_vpc_security_group_egress_rule" "db_egress_rule" {
+  security_group_id = aws_security_group.db_security_rules.id
+  ip_protocol       = "-1"
+  cidr_ipv4         = "0.0.0.0/0"
+}
+
+resource "aws_db_instance" "app_db" {
+  identifier             = "db-${var.environment_name}"
+  engine                 = "postgres"
+  instance_class         = "db.t3.micro"
+  allocated_storage      = 20
+  db_name                = var.db_name
+  username               = var.db_username
+  password               = var.db_password
+  db_subnet_group_name   = aws_db_subnet_group.db_subnet_group.name
+  vpc_security_group_ids = [aws_security_group.db_security_rules.id]
+  publicly_accessible    = false
+  skip_final_snapshot    = true
+  multi_az               = false
+  backup_retention_period = 0
+  apply_immediately      = true
+
+  tags = {
+    Name = "db-${var.environment_name}"
+  }
+}
+
 resource "aws_iam_role" "aws_iam_execution_role" {
   name = "execution-role-${var.environment_name}"
   assume_role_policy = jsonencode({
@@ -146,11 +195,11 @@ resource "aws_ecs_task_definition" "app_tasks" { // task definition legt die Par
       { name = "TARGET_METHOD", value = var.target_method },
       { name = "S3_BUCKET", value = var.s3_bucket_aws },
       { name = "APP_ENV", value = "prod" },
-      { name = "POSTGRES_HOST", value = var.postgres_host },
-      { name = "POSTGRES_PORT", value = tostring(var.postgres_port) },
-      { name = "POSTGRES_USER", value = var.postgres_user },
-      { name = "POSTGRES_PASSWORD", value = var.postgres_password },
-      { name = "POSTGRES_DB", value = var.postgres_db },
+      { name = "POSTGRES_HOST", value = aws_db_instance.app_db.address },
+      { name = "POSTGRES_PORT", value = tostring(5432) },
+      { name = "POSTGRES_USER", value = var.db_username },
+      { name = "POSTGRES_PASSWORD", value = var.db_password },
+      { name = "POSTGRES_DB", value = var.db_name },
       { name = "JWT_SECRET_KEY", value = var.jwt_secret_key },
       { name = "SECRET_KEY", value = var.jwt_secret_key }
     ]

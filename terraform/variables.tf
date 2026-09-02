@@ -57,6 +57,21 @@ variable "jwt_secret_key" {
   sensitive = true
 }
 
+variable "db_username" {
+  type      = string
+  sensitive = true
+}
+
+variable "db_password" {
+  type      = string
+  sensitive = true
+}
+
+variable "db_name" {
+  type      = string
+  sensitive = true
+}
+
 variable "environments" {
   type = map(object({
     vpc_cidr               = string

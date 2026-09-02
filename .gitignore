@@ -1,1 +1,5 @@
 terraform/applikation/code/src/fastapi-realworld-backend-master/fastapi-realworld-backend-master/Makefile
+
+# macOS
+.DS_Store
+**/.DS_Store
