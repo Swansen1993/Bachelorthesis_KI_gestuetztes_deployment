@@ -8,3 +8,5 @@ terraform/applikation/code/src/fastapi-realworld-backend-master/fastapi-realworl
 terraform/secrets.tfvars
 terraform/secrets.auto.tfvars
 *.tfvars.local
+
+terraform/DEPLOYMENT_HANDBUCH.md
