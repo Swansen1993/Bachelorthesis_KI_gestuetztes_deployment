@@ -3,7 +3,7 @@ resource "aws_vpc" "enviroments_containers" {
   enable_dns_hostnames = true // ec2 instanzen können hostnamen bekommen
   enable_dns_support   = true // aktiviert interne dns auflösung (innerhalb vpc) auflösen zu können 
   tags                 = { Name = "vpc-${var.environment_name}" }
-}  
+}
 
 resource "aws_subnet" "subnet_for_vpc" {
   vpc_id                  = aws_vpc.enviroments_containers.id // welche vpc vm soll weiter unterteilt werden ? 
@@ -108,21 +108,30 @@ resource "aws_vpc_security_group_egress_rule" "db_egress_rule" {
   cidr_ipv4         = "0.0.0.0/0"
 }
 
+# Generiert pro Umgebung ein eigenes, sicheres DB-Passwort (wird nicht abgefragt)
+resource "random_password" "db_password" {
+  length      = 24
+  special     = false
+  min_upper   = 1
+  min_lower   = 1
+  min_numeric = 1
+}
+
 resource "aws_db_instance" "app_db" {
-  identifier             = "db-${var.environment_name}"
-  engine                 = "postgres"
-  instance_class         = "db.t3.micro"
-  allocated_storage      = 20
-  db_name                = var.db_name
-  username               = var.db_username
-  password               = var.db_password
-  db_subnet_group_name   = aws_db_subnet_group.db_subnet_group.name
-  vpc_security_group_ids = [aws_security_group.db_security_rules.id]
-  publicly_accessible    = false
-  skip_final_snapshot    = true
-  multi_az               = false
+  identifier              = "db-${var.environment_name}"
+  engine                  = "postgres"
+  instance_class          = "db.t3.micro"
+  allocated_storage       = 20
+  db_name                 = var.db_name
+  username                = var.db_username
+  password                = random_password.db_password.result
+  db_subnet_group_name    = aws_db_subnet_group.db_subnet_group.name
+  vpc_security_group_ids  = [aws_security_group.db_security_rules.id]
+  publicly_accessible     = false
+  skip_final_snapshot     = true
+  multi_az                = false
   backup_retention_period = 0
-  apply_immediately      = true
+  apply_immediately       = true
 
   tags = {
     Name = "db-${var.environment_name}"
@@ -187,7 +196,7 @@ resource "aws_ecs_task_definition" "app_tasks" { // task definition legt die Par
   memory                   = var.app_memory
 
   container_definitions = jsonencode([{
-    name = "Application_container"
+    name      = "Application_container"
     image     = var.app_image_uri
     essential = true
 
@@ -198,7 +207,7 @@ resource "aws_ecs_task_definition" "app_tasks" { // task definition legt die Par
       { name = "POSTGRES_HOST", value = aws_db_instance.app_db.address },
       { name = "POSTGRES_PORT", value = tostring(5432) },
       { name = "POSTGRES_USER", value = var.db_username },
-      { name = "POSTGRES_PASSWORD", value = var.db_password },
+      { name = "POSTGRES_PASSWORD", value = random_password.db_password.result },
       { name = "POSTGRES_DB", value = var.db_name },
       { name = "JWT_SECRET_KEY", value = var.jwt_secret_key },
       { name = "SECRET_KEY", value = var.jwt_secret_key }
@@ -206,16 +215,16 @@ resource "aws_ecs_task_definition" "app_tasks" { // task definition legt die Par
 
     portMappings = [{
       containerPort = 8080
-      hostPort = 8080 
+      hostPort      = 8080
     }]
 
     logConfiguration = {
-     logDriver = "awslogs"
-     options = {
-      awslogs-group         = "/ecs/app-${var.environment_name}"
-      awslogs-region        = "eu-central-1"
-      awslogs-stream-prefix = "application"
-     }
+      logDriver = "awslogs"
+      options = {
+        awslogs-group         = "/ecs/app-${var.environment_name}"
+        awslogs-region        = "eu-central-1"
+        awslogs-stream-prefix = "application"
+      }
     }
   }])
 }
@@ -252,7 +261,7 @@ resource "aws_ecs_task_definition" "runner_tasks" {
   cpu                      = var.test_cpu
   memory                   = var.test_memory
   execution_role_arn       = aws_iam_role.aws_iam_execution_role.arn
-  task_role_arn            = aws_iam_role.locust_runner_task_role.arn 
+  task_role_arn            = aws_iam_role.locust_runner_task_role.arn
 
 
 
@@ -262,14 +271,14 @@ resource "aws_ecs_task_definition" "runner_tasks" {
     image     = var.locust_image_uri
     essential = true
 
-  logConfiguration = {
-    logDriver = "awslogs"
-    options = {
-    awslogs-group         = "/ecs/locust-${var.environment_name}"
-    awslogs-region        = "eu-central-1"
-    awslogs-stream-prefix = "locust"
-  }
-}
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        awslogs-group         = "/ecs/locust-${var.environment_name}"
+        awslogs-region        = "eu-central-1"
+        awslogs-stream-prefix = "locust"
+      }
+    }
 
     environment = [
       { name = "TARGET_METHOD", value = tostring(var.target_method) },

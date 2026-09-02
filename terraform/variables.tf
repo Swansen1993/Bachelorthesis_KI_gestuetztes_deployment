@@ -27,42 +27,12 @@ variable "target_method" {
   description = "name der methode die durch den Lasttest getestet wird"
 }
 
-variable "postgres_host" {
-  type      = string
-  sensitive = true
-}
-
-variable "postgres_port" {
-  type      = number
-  sensitive = true
-}
-
-variable "postgres_user" {
-  type      = string
-  sensitive = true
-}
-
-variable "postgres_password" {
-  type      = string
-  sensitive = true
-}
-
-variable "postgres_db" {
-  type      = string
-  sensitive = true
-}
-
 variable "jwt_secret_key" {
   type      = string
   sensitive = true
 }
 
 variable "db_username" {
-  type      = string
-  sensitive = true
-}
-
-variable "db_password" {
   type      = string
   sensitive = true
 }

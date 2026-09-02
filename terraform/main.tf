@@ -10,12 +10,16 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.0"
     }
-  }    
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
+  }
 }
 
 provider "aws" {
   region = var.aws_region
-}  
+}
 
 module "environments" {
   source   = "./modules/environments" // liest alle tf dateien in diesem ordner
@@ -38,13 +42,7 @@ module "environments" {
   s3_bucket_aws          = var.s3_bucket_aws
   variant_id             = var.variant_id
   target_method          = var.target_method
-  postgres_host          = var.postgres_host
-  postgres_port          = var.postgres_port
-  postgres_user          = var.postgres_user
-  postgres_password      = var.postgres_password
-  postgres_db            = var.postgres_db
   jwt_secret_key         = var.jwt_secret_key
   db_username            = var.db_username
-  db_password            = var.db_password
   db_name                = var.db_name
 }

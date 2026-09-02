@@ -71,34 +71,9 @@ variable "variant_id" {
 }
 
 variable "target_method" {
-  default = "pos_001_post_add_article"
+  default     = "pos_001_post_add_article"
   description = "add article default"
-  type    = string
-}
-
-variable "postgres_host" {
-  type      = string
-  sensitive = true
-}
-
-variable "postgres_port" {
-  type      = number
-  sensitive = true
-}
-
-variable "postgres_user" {
-  type      = string
-  sensitive = true
-}
-
-variable "postgres_password" {
-  type      = string
-  sensitive = true
-}
-
-variable "postgres_db" {
-  type      = string
-  sensitive = true
+  type        = string
 }
 
 variable "jwt_secret_key" {
@@ -107,11 +82,6 @@ variable "jwt_secret_key" {
 }
 
 variable "db_username" {
-  type      = string
-  sensitive = true
-}
-
-variable "db_password" {
   type      = string
   sensitive = true
 }
