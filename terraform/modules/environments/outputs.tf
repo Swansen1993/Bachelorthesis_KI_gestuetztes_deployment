@@ -14,3 +14,24 @@ output "dns_endpoint" {
   description = " lokaler DNS Punkt "
   value       = "-app.${var.environment_name}.local"
 }
+
+output "runner_task_family" {
+  value = aws_ecs_task_definition.runner_tasks.family
+}
+
+output "app_security_group_id" {
+  value = aws_security_group.app_security_rules.id
+}
+
+output "subnet_id" {
+  value = aws_subnet.subnet_for_vpc.id
+}
+
+output "db_address" {
+  value = aws_db_instance.app_db.address
+}
+
+output "db_port" {
+  value = 5432
+}
+
