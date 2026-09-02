@@ -5,11 +5,25 @@ resource "aws_vpc" "enviroments_containers" {
   tags                 = { Name = "vpc-${var.environment_name}" }
 }
 
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
 resource "aws_subnet" "subnet_for_vpc" {
   vpc_id                  = aws_vpc.enviroments_containers.id // welche vpc vm soll weiter unterteilt werden ? 
   cidr_block              = cidrsubnet(var.vpc_cidr, 8, 1)    // Wird verwendet, um dynamisch den vorhandenen vpc bereich in kleinere subnets aufzuteilen, ist praktisch wenn wir mehrere Umgebungen dynamisch erzeugen. Bei einer einzelnen festen  Umgebung reicht auch cidr_block = "10.0.1.0/24"
-  map_public_ip_on_launch = true                              // öffenliche ip adressen zuweisen um öffentliche endpunkte ansteurn zu könne (AWS ECR und AWS-S3 buckets) 
+  availability_zone       = data.aws_availability_zones.available.names[0]
+  map_public_ip_on_launch = true // öffenliche ip adressen zuweisen um öffentliche endpunkte ansteurn zu könne (AWS ECR und AWS-S3 buckets) 
   tags                    = { Name = "subnet-${var.environment_name}" }
+}
+
+// Zweites Subnet in einer anderen AZ - RDS verlangt >= 2 AZs in der DB Subnet Group
+resource "aws_subnet" "subnet_for_vpc_az2" {
+  vpc_id                  = aws_vpc.enviroments_containers.id
+  cidr_block              = cidrsubnet(var.vpc_cidr, 8, 2)
+  availability_zone       = data.aws_availability_zones.available.names[1]
+  map_public_ip_on_launch = true
+  tags                    = { Name = "subnet2-${var.environment_name}" }
 }
 
 resource "aws_internet_gateway" "igw" {
@@ -82,7 +96,7 @@ resource "aws_vpc_security_group_egress_rule" "egressrulevpc" {
 
 resource "aws_db_subnet_group" "db_subnet_group" {
   name       = "db-subnet-${var.environment_name}"
-  subnet_ids = [aws_subnet.subnet_for_vpc.id]
+  subnet_ids = [aws_subnet.subnet_for_vpc.id, aws_subnet.subnet_for_vpc_az2.id]
 
   tags = {
     Name = "db-subnet-${var.environment_name}"
