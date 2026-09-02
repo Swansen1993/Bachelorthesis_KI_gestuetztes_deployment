@@ -33,13 +33,11 @@ variable "jwt_secret_key" {
 }
 
 variable "db_username" {
-  type      = string
-  sensitive = true
+  type = string
 }
 
 variable "db_name" {
-  type      = string
-  sensitive = true
+  type = string
 }
 
 variable "environments" {
