@@ -256,7 +256,8 @@ def cmd_run(args):
     method = mapping[args.test]
 
     variant = args.variant or os.environ.get("VARIANT_ID", "v1")
-    s3_path = f"{variant}/{method}/{args.env}/metrics.json"
+    metrics_file = f"{method}_{args.env}_metrics.json"
+    s3_path = f"{variant}/{method}/{args.env}/{metrics_file}"
 
     print(f"[locust-{args.env}] Test={args.test} -> Methode={method}")
     print(f"[locust-{args.env}] S3-KPI-Pfad: {s3_path}")
