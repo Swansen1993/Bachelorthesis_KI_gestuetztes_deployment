@@ -12,8 +12,8 @@ class Projekt01Tests(HttpUser):
 
     def on_start(self):
         "Vor Testbeginn einen Nutzer erstellen"
-        self.username = f"user_{uuid.uuid4().hex[8]}"
-        self.email = f"user_{self.username}@test.com"
+        self.username = f"user_{uuid.uuid4().hex[:8]}"
+        self.email = f"{self.username}@test.com"
         self.password = "benchmarkPW123!"
         self.token = ""
         self.headers = {}
@@ -42,8 +42,8 @@ class Projekt01Tests(HttpUser):
                 json={
                     "article": {
                         "title": f"Init Article {self.username}",
-                        "description": "Init",
-                        "body": "Body",
+                        "description": "Init text für beschreibung",
+                        "body": "Body text text text artikel",
                     }
                 },
                 headers=self.headers,
@@ -55,13 +55,14 @@ class Projekt01Tests(HttpUser):
 
     @task(1 if ACTIVE_TARGET == "pos_001_post_add_article" else 0)
     def add_article_test(self):
-        unique_id = uuid.uuid4().hex[8]
+        unique_id = uuid.uuid4().hex[:8]
 
         payload = {
             "article": {
                 "title": f" test_title{unique_id}",
                 "description": "Beschreibung artikel test",
                 "body": "Testartikel inhalt",
+                "tagList": [],
             }
         }
 
@@ -82,7 +83,7 @@ class Projekt01Tests(HttpUser):
 
     @task(1 if ACTIVE_TARGET == "pos_003_post_article_add_many_tag" else 0)
     def add_many(self):
-        unique_suffix = uuid.uuid4().hex[8]
+        unique_suffix = uuid.uuid4().hex[:8]
 
         payload2 = {
             "article": {
@@ -116,7 +117,7 @@ class Projekt01Tests(HttpUser):
     def bench_comment_add(self):
         self.client.post(
             f"/api/articles/{self.target_slug}/comments",
-            json={"comment": {"body": f"benchmark comment {uuid.uuid4().hex[8]}"}},
+            json={"comment": {"body": f"benchmark comment {uuid.uuid4().hex[:8]}"}},
             headers=self.headers,
             name="/api/articles/: slug/comments [comment_add]",
         )
