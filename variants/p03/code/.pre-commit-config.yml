@@ -1,0 +1,38 @@
+repos:
+  - repo: local
+    hooks:
+      - id: reformat
+        name: reformat
+        description: "Code formatter"
+        entry: uv run inv format
+        language: python
+        types: [python]
+        require_serial: true
+        pass_filenames: false
+
+      - id: lint
+        name: lint
+        description: "Code linter"
+        entry: uv run inv lint
+        language: python
+        types: [python]
+        require_serial: true
+        pass_filenames: false
+
+      - id: static-check
+        name: static-check
+        description: "Static type checker"
+        entry: uv run inv static-check
+        language: python
+        types: [python]
+        require_serial: true
+        pass_filenames: false
+
+      - id: security-check
+        name: security-check
+        description: "Security checker"
+        entry: uv run inv security-check
+        language: python
+        types: [python]
+        require_serial: true
+        pass_filenames: false

@@ -1,0 +1,8 @@
+__version__ = "0.12.0"
+version = tuple(int(v) for v in __version__.split("."))
+__title__ = "Mailer"
+__description__ = "Dead-simple mailer micro-service for static websites"
+__author__ = "Romain Clement"
+__author_email__ = "contact@romain-clement.net"
+__url__ = "https://github.com/rclement/mailer"
+__license__ = "AGPLv3"

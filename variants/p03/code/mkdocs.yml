@@ -1,0 +1,47 @@
+site_name: Mailer Documentation
+site_description: Dead-simple mailer micro-service for static websites
+site_author: Romain Clement
+
+site_url: https://rclement.github.io/mailer/
+repo_name: rclement/mailer
+repo_url: https://github.com/rclement/mailer
+edit_uri: edit/master/docs/
+docs_dir: docs
+site_dir: site
+
+extra:
+  version: 0.10.3
+
+nav:
+  - Home: 'index.md'
+  - 'usage.md'
+  - 'deployment.md'
+  - 'contributing.md'
+  - 'changelog.md'
+
+theme:
+  name: material
+  language: en
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
+
+plugins:
+  - search
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences

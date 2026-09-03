@@ -1,0 +1,94 @@
+from collections.abc import AsyncIterator, Sequence
+from typing import Final, cast
+
+import asgi_lifespan
+import httpx2
+import pytest
+from dishka import Provider
+from fastapi import FastAPI
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from app.core.common.services.user import UserService
+from app.main.config.settings import AppSettings
+from app.main.run import make_app
+from app.outbound.persistence_sqla.registry import mapper_registry
+
+LIFESPAN_MANAGER_STARTUP_TIMEOUT_S: Final[int] = 30
+
+
+@pytest.fixture
+def it_di_overrides() -> Sequence[Provider]:
+    """
+    Override in a test module to provide custom dependency overrides.
+    Keep the same fixture signature.
+    """
+    return ()
+
+
+@pytest.fixture
+def it_fastapi_app(it_di_overrides: Sequence[Provider]) -> FastAPI:
+    return make_app(
+        *it_di_overrides,
+        app_settings=AppSettings(DEBUG_MODE=False),
+    )
+
+
+@pytest.fixture
+async def it_client(it_fastapi_app: FastAPI) -> AsyncIterator[httpx2.AsyncClient]:
+    async with (
+        asgi_lifespan.LifespanManager(
+            it_fastapi_app,
+            startup_timeout=LIFESPAN_MANAGER_STARTUP_TIMEOUT_S,
+        ),
+        httpx2.AsyncClient(
+            transport=httpx2.ASGITransport(app=it_fastapi_app),
+            base_url="http://test",
+        ) as client,
+    ):
+        yield client
+
+
+@pytest.fixture
+async def it_sessionmaker(
+    it_client: httpx2.AsyncClient,
+    it_fastapi_app: FastAPI,
+) -> async_sessionmaker[AsyncSession]:
+    container = it_fastapi_app.state.dishka_container
+    session_maker = await container.get(async_sessionmaker[AsyncSession])
+    return cast(async_sessionmaker[AsyncSession], session_maker)
+
+
+@pytest.fixture
+async def it_db_clean(
+    allow_destructive: None,
+    it_sessionmaker: async_sessionmaker[AsyncSession],
+) -> None:
+    table_names = [table.name for table in mapper_registry.metadata.sorted_tables if table.name != "alembic_version"]
+    if not table_names:
+        return
+
+    sql = "TRUNCATE " + ", ".join(f'"{name}"' for name in table_names) + " RESTART IDENTITY CASCADE;"
+
+    async with it_sessionmaker() as session:
+        await session.execute(text(sql))
+        await session.commit()
+
+
+@pytest.fixture
+async def it_session(
+    it_db_clean: None,
+    it_sessionmaker: async_sessionmaker[AsyncSession],
+) -> AsyncIterator[AsyncSession]:
+    async with it_sessionmaker() as session:
+        yield session
+
+
+@pytest.fixture
+async def it_user_service(
+    it_client: httpx2.AsyncClient,
+    it_fastapi_app: FastAPI,
+) -> UserService:
+    container = it_fastapi_app.state.dishka_container
+    user_service = await container.get(UserService)
+    return cast(UserService, user_service)

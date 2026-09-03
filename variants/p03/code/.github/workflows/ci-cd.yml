@@ -1,0 +1,290 @@
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "*"
+  pull_request:
+  workflow_dispatch:
+
+env:
+  BASE_URL_PREVIEW: mailer-romainclement.vercel.app
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+      - name: Run QA
+        run: uv run inv qa
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: .coverage
+          include-hidden-files: true
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    env:
+      COVERAGE_MD_FILE: "coverage.md"
+      COVERAGE_REPORT_TITLE: "Code coverage report"
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: coverage
+      - name: Generate Markdown code coverage report
+        run: |
+          uv run coverage xml
+          echo "# ${COVERAGE_REPORT_TITLE}" >> "${COVERAGE_MD_FILE}"
+          uv run coverage report --show-missing --format=markdown >> "${COVERAGE_MD_FILE}"
+      - name: Compute diff coverage with target branch
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          TARGET_BRANCH: origin/${{ github.event.pull_request.base.ref }}
+          DIFFCOV_MD_FILE: "diff-coverage.md"
+        run: |
+          uvx diff-cover --compare-branch ${TARGET_BRANCH} --diff-range-notation '..' --ignore-staged --ignore-unstaged --markdown-report "${DIFFCOV_MD_FILE}" coverage.xml
+          if [ -f "${DIFFCOV_MD_FILE}" ]; then
+            cat "${DIFFCOV_MD_FILE}" >> "${COVERAGE_MD_FILE}"
+          else
+            echo "## Diff coverage" >> "${COVERAGE_MD_FILE}"
+            echo "Diff coverage report could not be generated (missing ${DIFFCOV_MD_FILE})." >> "${COVERAGE_MD_FILE}"
+          fi
+      - name: Export code coverage report to job summary
+        run: cat "${COVERAGE_MD_FILE}" >> "${GITHUB_STEP_SUMMARY}"
+      - name: Add or update code coverage comment to pull request
+        uses: actions/github-script@v9
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          script: |
+            const fs = require('fs')
+
+            const body = fs.readFileSync(`${process.env.COVERAGE_MD_FILE}`, 'utf-8')
+
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+              }
+            )
+            const matches = comments.filter(
+              comment => comment.body && comment.body.includes(`${process.env.COVERAGE_REPORT_TITLE}`)
+            )
+            const comment = matches[0]
+
+            if (comment) {
+              const commentId = comment.id
+              console.log(`updating existing comment: comment_id=${commentId}`)
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: commentId,
+                body: body,
+              })
+            } else {
+              console.log('adding new comment')
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body,
+              })
+            }
+
+  build-docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    needs: test
+
+    env:
+      IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/mailer
+      IMAGE_TAG: latest
+
+    steps:
+      - uses: actions/checkout@v6
+      - name: Select Docker image tag (production only)
+        if: contains(github.ref, 'tags')
+        run: echo "IMAGE_TAG=${GITHUB_REF##*/}" >> $GITHUB_ENV
+      - name: Pull latest Docker image
+        run: docker pull $IMAGE_NAME:latest || true
+      - name: Build Docker image (${{ env.IMAGE_TAG }})
+        run: docker build -t $IMAGE_NAME:$IMAGE_TAG --cache-from $IMAGE_NAME:latest .
+      - name: Log into Docker Registry
+        if: contains(github.ref, 'master') || contains(github.ref, 'tags')
+        run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+      - name: Push Docker image
+        if: contains(github.ref, 'master') || contains(github.ref, 'tags')
+        run: |
+          docker push $IMAGE_NAME:$IMAGE_TAG
+
+  build-docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+      - name: Build documentation
+        run: |
+          uv run mkdocs build
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-docs
+          path: site
+
+  deploy-docs:
+    name: Deploy Documentation
+    runs-on: ubuntu-latest
+    needs: build-docs
+    if: contains(github.ref, 'master')
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    permissions:
+      pages: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v6
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: build-docs
+          path: site
+      - name: Setup Pages
+        uses: actions/configure-pages@v6
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+  deploy-vercel-setup:
+    name: Deployment setup
+    runs-on: ubuntu-latest
+    needs: build-docker
+
+    outputs:
+      github_ref_slug: ${{ steps.output_step.outputs.github_ref_slug }}
+      vercel_alias: ${{ steps.output_step.outputs.vercel_alias }}
+      deployment_url: ${{ steps.output_step.outputs.deployment_url }}
+
+    steps:
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v5
+      - name: Get current branch name slug
+        # retrieving the branch name depends on the event type:
+        # - pull_request events: GITHUB_HEAD_REF_SLUG_URL
+        # - push events: GITHUB_REF_SLUG_URL
+        # - delete events: GITHUB_EVENT_REF_SLUG_URL
+        run: echo "BRANCH_NAME_SLUG=${GITHUB_HEAD_REF_SLUG_URL:-${GITHUB_REF_SLUG_URL}}" >> $GITHUB_ENV
+      - name: Set preview deployment url variable
+        if: ${{ !contains(github.ref, 'tags') }}
+        run: |
+          MAX_SLUG_LENGTH=$((63 - ${#BASE_URL_PREVIEW} - 1))
+          TRUNCATED_SLUG=${BRANCH_NAME_SLUG:0:$MAX_SLUG_LENGTH}
+          VERCEL_ALIAS=${TRUNCATED_SLUG}-${BASE_URL_PREVIEW}
+          echo "VERCEL_ALIAS=${VERCEL_ALIAS}" >> $GITHUB_ENV
+          echo "DEPLOYMENT_URL=https://${VERCEL_ALIAS}" >> $GITHUB_ENV
+      - name: Set production deployment url variable
+        if: ${{ contains(github.ref, 'tags') }}
+        run: |
+          echo "VERCEL_ALIAS=" >> $GITHUB_ENV
+          echo "DEPLOYMENT_URL=${{ secrets.MAILER_URL }}" >> $GITHUB_ENV
+      - id: output_step
+        run: |
+          echo "github_ref_slug=${BRANCH_NAME_SLUG}" >> $GITHUB_OUTPUT
+          echo "vercel_alias=${VERCEL_ALIAS}" >> $GITHUB_OUTPUT
+          echo "deployment_url=${DEPLOYMENT_URL}" >> $GITHUB_OUTPUT
+
+  deploy-vercel-preview:
+    name: Vercel preview deployment
+    runs-on: ubuntu-latest
+    needs: deploy-vercel-setup
+    if: ${{ !contains(github.ref, 'tags') }}
+    environment:
+      name: preview/${{ needs.deploy-vercel-setup.outputs.github_ref_slug }}
+      url: ${{ needs.deploy-vercel-setup.outputs.deployment_url }}
+
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v6
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v5
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+      - name: Deploy to Vercel
+        run: |
+          VERCEL_ALIAS=${{ needs.deploy-vercel-setup.outputs.vercel_alias }}
+          VERCEL_URL=$(vercel deploy --confirm --token $VERCEL_TOKEN)
+          vercel alias --token $VERCEL_TOKEN set $VERCEL_URL $VERCEL_ALIAS
+
+  deploy-vercel-production:
+    name: Vercel production deployment
+    runs-on: ubuntu-latest
+    needs: deploy-vercel-setup
+    if: contains(github.ref, 'tags')
+
+    environment:
+      name: production
+      url: ${{ needs.deploy-vercel-setup.outputs.deployment_url }}
+
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+      - name: Deploy to Vercel
+        run: |
+          vercel deploy --confirm --token $VERCEL_TOKEN --prod

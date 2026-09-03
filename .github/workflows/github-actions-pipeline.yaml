@@ -32,7 +32,7 @@ env:
   ROLE_TO_ASSUME: arn:aws:iam::415221799955:role/github_worklow_aws
   ECR_APP_REPO: app-repo
   ECR_LOCUST_REPO: locust-repo
-  VARIANT_ID: ${{ inputs.variant || 'p01' }}
+  VARIANT_ID: v1
   VARIANT_PATH: ${{ inputs.variant || 'p01' }}
   TF_VAR_db_username: ${{ secrets.DB_USERNAME }}
   TF_VAR_db_name: ${{ secrets.DB_NAME }}
@@ -171,9 +171,9 @@ jobs:
           aws-region: ${{env.AWS_REGION}}
           role-to-assume: ${{env.ROLE_TO_ASSUME}}
       - name: KPI-Export (CSV + JSONL)
-        run: python3 tools/export_training_data.py --out export_kpis
+        run: python3 tools/export_training_data.py --variant $VARIANT_ID --out variants/$VARIANT_PATH
       - name: Upload KPI-Export
         uses: actions/upload-artifact@v4
         with:
           name: kpi-export
-          path: export_kpis
+          path: variants/$VARIANT_PATH
