@@ -26,7 +26,7 @@ DB_CLEAN_CMD = (
     "    for r in rows:\n"
     "        if r['tablename'] == 'alembic_version':\n"
     "            continue\n"
-    "        await c.execute('TRUNCATE TABLE \"' + r['tablename'] + '\" CASCADE RESTART IDENTITY')\n"
+    "        await c.execute('TRUNCATE TABLE \"' + r['tablename'] + '\" RESTART IDENTITY CASCADE')\n"
     "    await c.close()\n"
     "asyncio.run(_clean())"
 )
