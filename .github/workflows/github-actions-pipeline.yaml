@@ -1,8 +1,5 @@
 name: Github Actions Pipeline
 on:
-  push:
-    branches:
-      - test/P01
   workflow_dispatch:
     inputs:
       variant:
@@ -91,6 +88,8 @@ jobs:
       - name: Login to aws_ecr
         uses: aws-actions/amazon-ecr-login@v2
         id: login-ecr
+      - name: Alte KPIs dieser Variante loeschen
+        run: aws s3 rm "s3://kpi-save-bucket-415221799955-eu-central-1-an/${VARIANT_ID}/" --recursive
       - name: Setup-Terraform
         uses: hashicorp/setup-terraform@v3
         with:

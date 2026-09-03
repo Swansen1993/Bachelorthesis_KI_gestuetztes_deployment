@@ -97,6 +97,7 @@ def main():
     csv_path = os.path.join(args.out, "kpis.csv")
     jsonl_path = os.path.join(args.out, "dataset.jsonl")
     rows = []
+    jsonl_lines = []
     missing_snippet = 0
 
     for key in keys:
@@ -127,17 +128,25 @@ def main():
         else:
             missing_snippet += 1
 
-        with open(jsonl_path, "a", encoding="utf-8") as fh:
-            record = {
-                "variant": variant,
-                "pos": pos,
-                "method": method,
-                "env": env,
-                "metrics": {f: payload.get(f) for f in METRIC_FIELDS},
-                "snippet_file": snippet_file or "",
-                "snippet": snippet_code,
-            }
-            fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+        jsonl_lines.append(
+            json.dumps(
+                {
+                    "variant": variant,
+                    "pos": pos,
+                    "method": method,
+                    "env": env,
+                    "metrics": {f: payload.get(f) for f in METRIC_FIELDS},
+                    "snippet_file": snippet_file or "",
+                    "snippet": snippet_code,
+                },
+                ensure_ascii=False,
+            )
+        )
+
+    with open(jsonl_path, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(jsonl_lines))
+        if jsonl_lines:
+            fh.write("\n")
 
     with open(csv_path, "w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(fh, fieldnames=list(rows[0].keys()) if rows else [])
