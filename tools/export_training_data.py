@@ -72,7 +72,7 @@ def extract_meta(key):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Exportiert KPI-JSONs aus S3 zu CSV + JSONL (mit Snippet-Code)"
+        description="Exportiert  KPI-JSONs aus S3 zu CSV + JSONL (mit Snippet-Code)"
     )
     parser.add_argument(
         "--bucket",
