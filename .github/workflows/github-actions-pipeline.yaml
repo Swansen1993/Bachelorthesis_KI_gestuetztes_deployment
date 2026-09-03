@@ -1,5 +1,5 @@
 name: Github Actions Pipeline
-true:
+on:
   push:
     branches:
     - test/P01
