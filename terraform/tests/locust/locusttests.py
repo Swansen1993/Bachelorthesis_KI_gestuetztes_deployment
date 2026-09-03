@@ -66,7 +66,7 @@ class Projekt01Tests(HttpUser):
         }
 
         self.client.post(
-            "api/articles",
+            "/api/articles",
             json=payload,
             headers=self.headers,
             name="/api/articles [POST add]",
@@ -98,7 +98,7 @@ class Projekt01Tests(HttpUser):
         }
 
         self.client.post(
-            "api/articles",
+            "/api/articles",
             json=payload2,
             headers=self.headers,
             name="api/articles [POST add_many]",
