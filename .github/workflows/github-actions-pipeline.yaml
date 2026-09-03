@@ -1,5 +1,8 @@
 name: Github Actions Pipeline
 on:
+  push:
+    branches:
+      - test/P01
   workflow_dispatch:
     inputs:
       variant:
