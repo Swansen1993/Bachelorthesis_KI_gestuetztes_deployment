@@ -17,7 +17,9 @@ def _cpu_sampler_loop():
         cur_times = os.times()
         cur_wall = time.monotonic()
         wall = cur_wall - prev_wall
-        cpu = (cur_times.user - prev_times.user) + (cur_times.system - prev_times.system)
+        cpu = (cur_times.user - prev_times.user) + (
+            cur_times.system - prev_times.system
+        )
         prev_times = cur_times
         prev_wall = cur_wall
         pct = (cpu / wall) * 100 if wall else 0
@@ -40,6 +42,7 @@ class Projekt01Tests(HttpUser):
         self.token = ""
         self.headers = {}
         self.target_slug = "bench-article-initialising"
+        self.follow_target = ""
 
         "user regisitrieren"
         reg_res = self.client.post(
@@ -76,10 +79,29 @@ class Projekt01Tests(HttpUser):
                     art_res.json().get("article", {}).get("slug", self.target_slug)
                 )
 
+        if self.token:
+            target_name = f"target_{uuid.uuid4().hex[:8]}"
+            t_res = self.client.post(
+                "/api/users",
+                json={
+                    "user": {
+                        "username": target_name,
+                        "email": f"{target_name}@test.com",
+                        "password": self.password,
+                    }
+                },
+            )
+            if t_res.status_code in [200, 201]:
+                self.follow_target = target_name
+
     @task(
         1
         if ACTIVE_TARGET
-        in ["pos_001_post_add_article", "pos_008_post_create_new_article", "pos_016_post_create_article"]
+        in [
+            "pos_001_post_add_article",
+            "pos_008_post_create_new_article",
+            "pos_016_post_create_article",
+        ]
         else 0
     )
     def add_article_test(self):
@@ -149,7 +171,10 @@ class Projekt01Tests(HttpUser):
     @task(
         1
         if ACTIVE_TARGET
-        in ["pos_005_post_article_comment_into_repository", "pos_018_post_create_comment"]
+        in [
+            "pos_005_post_article_comment_into_repository",
+            "pos_018_post_create_comment",
+        ]
         else 0
     )
     def bench_comment_add(self):
@@ -179,16 +204,22 @@ class Projekt01Tests(HttpUser):
         else 0
     )
     def bench_create_follow(self):
+        if not self.follow_target:
+            return
         self.client.post(
-            f"/api/profiles/{self.username}/follow",
+            f"/api/profiles/{self.follow_target}/follow",
             headers=self.headers,
             name="/api/profiles/:username/follow [follow_user]",
+        )
+        self.client.delete(
+            f"/api/profiles/{self.follow_target}/follow",
+            headers=self.headers,
+            name="/api/profiles/:username/follow [unfollow_user]",
         )
 
     @task(
         1
-        if ACTIVE_TARGET
-        in ["pos_010_post_sign_in_user", "pos_017_post_login_user"]
+        if ACTIVE_TARGET in ["pos_010_post_sign_in_user", "pos_017_post_login_user"]
         else 0
     )
     def bench_sign_in_user(self):
