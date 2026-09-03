@@ -1,10 +1,32 @@
 import os
+import threading
+import time
 import uuid
 from locust import HttpUser, task, between, events, stats
 import boto3
 import json
 
 ACTIVE_TARGET = os.getenv("TARGET_METHOD", "pos_001_post_add_article")
+
+
+def _cpu_sampler_loop():
+    prev_times = os.times()
+    prev_wall = time.monotonic()
+    while True:
+        time.sleep(10)
+        cur_times = os.times()
+        cur_wall = time.monotonic()
+        wall = cur_wall - prev_wall
+        cpu = (cur_times.user - prev_times.user) + (cur_times.system - prev_times.system)
+        prev_times = cur_times
+        prev_wall = cur_wall
+        pct = (cpu / wall) * 100 if wall else 0
+        print(f"RUNNER_CPU {pct:.1f}%", flush=True)
+
+
+@events.init.add_listener
+def _start_cpu_sampler(environment, **kwargs):
+    threading.Thread(target=_cpu_sampler_loop, daemon=True).start()
 
 
 class Projekt01Tests(HttpUser):
