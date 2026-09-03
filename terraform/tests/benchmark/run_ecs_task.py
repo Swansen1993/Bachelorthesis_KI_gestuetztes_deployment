@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_MAPPING = os.path.join(SCRIPT_DIR, "tests.json")
@@ -54,6 +55,16 @@ def load_env_infos(path):
 def load_test_mapping(path=DEFAULT_MAPPING):
     with open(path, encoding="utf-8") as fh:
         return json.load(fh)
+
+
+def resolve_mapping(explicit=None):
+    if explicit:
+        return explicit
+    variant = os.environ.get("VARIANT_ID", "")
+    candidate = os.path.join("variants", variant, "tests.json")
+    if os.path.isfile(candidate):
+        return candidate
+    return DEFAULT_MAPPING
 
 
 def network_config(env_info):
@@ -213,7 +224,7 @@ def cmd_migrate(args):
         return 1
     info = env_infos[args.env]
 
-    config = load_test_mapping(args.mapping)
+    config = load_test_mapping(resolve_mapping(args.mapping))
     migrate_cmd = config.get("db_migrate")
     if not migrate_cmd:
         print(
@@ -245,7 +256,7 @@ def cmd_run(args):
         return 1
     info = env_infos[args.env]
 
-    mapping = load_test_mapping(args.mapping)
+    mapping = load_test_mapping(resolve_mapping(args.mapping))
     test_names = sorted(k for k in mapping if not k.startswith("db_"))
     if args.test not in mapping:
         print(
@@ -283,6 +294,51 @@ def cmd_run(args):
     return 0 if ok else 1
 
 
+def cmd_benchmark(args):
+    env_infos = load_env_infos(args.env_info)
+    config = load_test_mapping(resolve_mapping(args.mapping))
+    if args.test not in config:
+        print(
+            f"Test '{args.test}' nicht in tests.json gefunden. "
+            f"Vorhanden: {sorted(k for k in config if not k.startswith('db_'))}"
+        )
+        return 1
+
+    envs = sorted(env_infos)
+
+    def worker(env):
+        ns = argparse.Namespace(
+            env_info=args.env_info,
+            env=env,
+            timeout=args.timeout,
+            mapping=args.mapping,
+            test=args.test,
+            variant=args.variant,
+        )
+        ok = cmd_migrate(ns) == 0
+        if ok:
+            ok = cmd_clean(ns) == 0
+        if ok:
+            ok = cmd_run(ns) == 0
+        return env, ok
+
+    results = {}
+    with ThreadPoolExecutor(max_workers=min(6, len(envs))) as pool:
+        futures = {pool.submit(worker, env): env for env in envs}
+        for future in futures:
+            env, ok = future.result()
+            results[env] = ok
+
+    failed = [env for env, ok in results.items() if not ok]
+    for env in sorted(results):
+        print(f"[benchmark-{env}] {'OK' if results[env] else 'FEHLER'}")
+    if failed:
+        print(f"FEHLGESCHLAGENE Umgebungen fuer {args.test}: {failed}")
+        return 1
+    print(f"[benchmark] {args.test}: alle Umgebungen OK ({len(envs)})")
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description="ECS One-off-Task Helfer")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -311,8 +367,8 @@ def main():
     )
     p_migrate.add_argument(
         "--mapping",
-        default=DEFAULT_MAPPING,
-        help="Pfad zur Konfig mit db_migrate (Default: neben diesem Skript)",
+        default=None,
+        help="Pfad zur Konfig mit db_migrate (Default: variante/variants tests.json)",
     )
     p_migrate.add_argument(
         "--timeout",
@@ -332,8 +388,8 @@ def main():
     )
     p_run.add_argument(
         "--mapping",
-        default=DEFAULT_MAPPING,
-        help="Pfad zur tests.json (Default: neben diesem Skript)",
+        default=None,
+        help="Pfad zur tests.json (Default: variante/variants tests.json)",
     )
     p_run.add_argument(
         "--variant",
@@ -347,6 +403,35 @@ def main():
         help="Maximale Wartezeit in Sekunden (Default 600)",
     )
     p_run.set_defaults(func=cmd_run)
+
+    p_benchmark = sub.add_parser(
+        "benchmark", help="Einen Test in allen Umgebungen parallel ausfuehren"
+    )
+    p_benchmark.add_argument(
+        "--env-info", required=True, help="Pfad zur environment_infos.json (Artifact)"
+    )
+    p_benchmark.add_argument(
+        "--test",
+        required=True,
+        help="Generischer Testname aus tests.json (z. B. Locust-Test-1)",
+    )
+    p_benchmark.add_argument(
+        "--mapping",
+        default=None,
+        help="Pfad zur tests.json (Default: variante/variants tests.json)",
+    )
+    p_benchmark.add_argument(
+        "--variant",
+        default=None,
+        help="Varianten-ID fuer den S3-Pfad (Default: env VARIANT_ID oder v1)",
+    )
+    p_benchmark.add_argument(
+        "--timeout",
+        type=int,
+        default=900,
+        help="Maximale Wartezeit je env-Schritt in Sekunden (Default 900)",
+    )
+    p_benchmark.set_defaults(func=cmd_benchmark)
 
     args = parser.parse_args()
     try:
