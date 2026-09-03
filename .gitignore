@@ -11,6 +11,7 @@ terraform/secrets.auto.tfvars
 
 terraform/DEPLOYMENT_HANDBUCH.md
 /PROJEKTHANDBUCH.md
+/export_kpis/
 
 # Variante-A-Vorlagen (lokal, nicht versionieren)
 /VARIANTE_A_TEMPLATE.md
