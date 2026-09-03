@@ -4,7 +4,7 @@ variable "environment_name" {
 }
 
 variable "vpc_cidr" {
-  description = "CIDR-block der isolierten VPC"
+  description = "CIDR Block der isolierten VPC"
   type        = string
 }
 
