@@ -44,6 +44,7 @@ class Projekt01Tests(HttpUser):
                         "title": f"Init Article {self.username}",
                         "description": "Init text für beschreibung",
                         "body": "Body text text text artikel",
+                        "tagList": [],
                     }
                 },
                 headers=self.headers,
