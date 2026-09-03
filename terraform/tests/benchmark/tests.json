@@ -1,5 +1,23 @@
 {
   "Locust-Test-1": "pos_001_post_add_article",
   "Locust-Test-2": "pos_002_get_list_by_filters",
+  "Locust-Test-3": "pos_003_post_article_add_many_tag",
+  "Locust-Test-4": "pos_004_get_articles_favorite_exists",
+  "Locust-Test-5": "pos_005_post_article_comment_into_repository",
+  "Locust-Test-6": "pos_006_get_follower_list",
+  "Locust-Test-7": "pos_007_post_create_follow_in_repository",
+  "Locust-Test-8": "pos_008_post_create_new_article",
+  "Locust-Test-9": "pos_009_delete_article_by_slug",
+  "Locust-Test-10": "pos_010_post_sign_in_user",
+  "Locust-Test-11": "pos_011_post_create_user",
+  "Locust-Test-12": "pos_012_post_follow_user",
+  "Locust-Test-13": "pos_013_get_article_comments",
+  "Locust-Test-15": "pos_015_get_global_article_feed",
+  "Locust-Test-16": "pos_016_post_create_article",
+  "Locust-Test-17": "pos_017_post_login_user",
+  "Locust-Test-18": "pos_018_post_create_comment",
+  "Locust-Test-19": "pos_019_post_follow_username",
+  "Locust-Test-20": "pos_020_put_update_current_user",
+  "Locust-Test-21": "pos_021_get_current_user",
   "db_migrate": ["python", "-m", "alembic", "-c", "alembic.ini", "upgrade", "head"]
 }

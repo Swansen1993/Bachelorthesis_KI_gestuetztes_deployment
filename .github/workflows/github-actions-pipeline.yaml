@@ -1,12 +1,11 @@
 name: Github Actions Pipeline
-on:
+true:
   push:
-    branches: ["test/P01"]
-
+    branches:
+    - test/P01
 permissions:
   id-token: write
   contents: read
-
 env:
   AWS_REGION: eu-central-1
   ROLE_TO_ASSUME: arn:aws:iam::415221799955:role/github_worklow_aws
@@ -16,89 +15,80 @@ env:
   TF_VAR_db_username: ${{ secrets.DB_USERNAME }}
   TF_VAR_db_name: ${{ secrets.DB_NAME }}
   TF_VAR_jwt_secret_key: ${{ secrets.JWT_SECRET_KEY }}
-
 jobs:
   Build-and-Push:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Configure AWS
-        uses: actions/checkout@v5
+    - name: Configure AWS
+      uses: actions/checkout@v5
+    - name: AWS_Credentials_Via_OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Login to AWSECR
+      uses: aws-actions/amazon-ecr-login@v2
+      id: login-ecr
+    - name: Build and Push App image in AWSECR
+      env:
+        REGISTRY: ${{steps.login-ecr.outputs.registry}}
+        IMAGE_TAG: ${{github.sha}}
+      run: 'docker build -t $REGISTRY/$ECR_APP_REPO:$IMAGE_TAG -t $REGISTRY/$ECR_APP_REPO:latest
+        terraform/applikation/code &&
 
-      - name: AWS_Credentials_Via_OIDC
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{env.AWS_REGION}}
-          role-to-assume: ${{env.ROLE_TO_ASSUME}}
+        docker push $REGISTRY/$ECR_APP_REPO:$IMAGE_TAG &&
 
-      - name: Login to AWSECR
-        uses: aws-actions/amazon-ecr-login@v2
-        id: login-ecr
+        docker push $REGISTRY/$ECR_APP_REPO:latest
 
-      - name: Build and Push App image in AWSECR
-        env:
-          REGISTRY: ${{steps.login-ecr.outputs.registry}}
-          IMAGE_TAG: ${{github.sha}}
-        run: |
-          docker build -t $REGISTRY/$ECR_APP_REPO:$IMAGE_TAG -t $REGISTRY/$ECR_APP_REPO:latest terraform/applikation/code &&
-          docker push $REGISTRY/$ECR_APP_REPO:$IMAGE_TAG &&
-          docker push $REGISTRY/$ECR_APP_REPO:latest
+        '
+    - name: Build and Push Locust image in AWSECR
+      env:
+        REGISTRY: ${{steps.login-ecr.outputs.registry}}
+        IMAGE_TAG: ${{github.sha}}
+      run: 'docker build -t $REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG -t $REGISTRY/$ECR_LOCUST_REPO:latest
+        terraform/tests/locust &&
 
-      - name: Build and Push Locust image in AWSECR
-        env:
-          REGISTRY: ${{steps.login-ecr.outputs.registry}}
-          IMAGE_TAG: ${{github.sha}}
-        run: |
-          docker build -t $REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG -t $REGISTRY/$ECR_LOCUST_REPO:latest terraform/tests/locust &&
-          docker push $REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG &&
-          docker push $REGISTRY/$ECR_LOCUST_REPO:latest
+        docker push $REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG &&
 
+        docker push $REGISTRY/$ECR_LOCUST_REPO:latest
+
+        '
   Deploy:
     runs-on: ubuntu-latest
     needs: Build-and-Push
-
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: AWS Credential via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Login to aws_ecr
+      uses: aws-actions/amazon-ecr-login@v2
+      id: login-ecr
+    - name: Setup-Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.5.0
+    - name: Terraform Apply
+      env:
+        REGISTRY: ${{steps.login-ecr.outputs.registry}}
+        IMAGE_TAG: ${{github.sha}}
+      working-directory: ./terraform
+      run: "terraform init\nterraform apply -auto-approve \\\n  -var=\"app_image_uri=$REGISTRY/$ECR_APP_REPO:$IMAGE_TAG\"\
+        \ \\\n  -var=\"locust_image_uri=$REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG\"\n"
+    - name: Umgebungsdetails exportieren
+      working-directory: ./terraform
+      run: 'terraform output -json environment_infos > /tmp/environment_infos.json
 
-      - name: AWS Credential via OIDC
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{env.AWS_REGION}}
-          role-to-assume: ${{env.ROLE_TO_ASSUME}}
-
-      - name: Login to aws_ecr
-        uses: aws-actions/amazon-ecr-login@v2
-        id: login-ecr
-
-      - name: Setup-Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.5.0
-
-      - name: Terraform Apply
-        env:
-          REGISTRY: ${{steps.login-ecr.outputs.registry}}
-          IMAGE_TAG: ${{github.sha}}
-        working-directory: ./terraform
-        run: |
-          terraform init
-          terraform apply -auto-approve \
-            -var="app_image_uri=$REGISTRY/$ECR_APP_REPO:$IMAGE_TAG" \
-            -var="locust_image_uri=$REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG"
-
-      - name: Umgebungsdetails exportieren
-        working-directory: ./terraform
-        run: |
-          terraform output -json environment_infos > /tmp/environment_infos.json
-
-      - name: Upload environment_infos
-        uses: actions/upload-artifact@v4
-        with:
-          name: environment_infos
-          path: /tmp/environment_infos.json
-          retention-days: 1
-
+        '
+    - name: Upload environment_infos
+      uses: actions/upload-artifact@v4
+      with:
+        name: environment_infos
+        path: /tmp/environment_infos.json
+        retention-days: 1
   Locust-Runner-1:
     runs-on: ubuntu-latest
     needs: Deploy
@@ -106,33 +96,34 @@ jobs:
       fail-fast: false
       max-parallel: 5
       matrix:
-        env: ["low", "medium", "high", "extreme", "prod"]
-
+        env:
+        - low
+        - medium
+        - high
+        - extreme
+        - prod
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: AWS Credential via OIDC
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{env.AWS_REGION}}
-          role-to-assume: ${{env.ROLE_TO_ASSUME}}
-
-      - name: Download environment_infos
-        uses: actions/download-artifact@v4
-        with:
-          name: environment_infos
-          path: /tmp/infra
-
-      - name: DB migrieren in ${{ matrix.env }}
-        run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json --env "${{ matrix.env }}"
-
-      - name: DB leeren in ${{ matrix.env }}
-        run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json --env "${{ matrix.env }}"
-
-      - name: Locust-Test-1 in ${{ matrix.env }}
-        run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json --env "${{ matrix.env }}" --test "Locust-Test-1"
-
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: AWS Credential via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Download environment_infos
+      uses: actions/download-artifact@v4
+      with:
+        name: environment_infos
+        path: /tmp/infra
+    - name: DB migrieren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: DB leeren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: Locust-Test-1 in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}" --test "Locust-Test-1"
   Locust-Runner-2:
     runs-on: ubuntu-latest
     needs: Locust-Runner-1
@@ -140,57 +131,661 @@ jobs:
       fail-fast: false
       max-parallel: 5
       matrix:
-        env: ["low", "medium", "high", "extreme", "prod"]
-
+        env:
+        - low
+        - medium
+        - high
+        - extreme
+        - prod
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: AWS Credential via OIDC
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{env.AWS_REGION}}
-          role-to-assume: ${{env.ROLE_TO_ASSUME}}
-
-      - name: Download environment_infos
-        uses: actions/download-artifact@v4
-        with:
-          name: environment_infos
-          path: /tmp/infra
-
-      - name: DB migrieren in ${{ matrix.env }}
-        run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json --env "${{ matrix.env }}"
-
-      - name: DB leeren in ${{ matrix.env }}
-        run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json --env "${{ matrix.env }}"
-
-      - name: Locust-Test-2 in ${{ matrix.env }}
-        run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json --env "${{ matrix.env }}" --test "Locust-Test-2"
-
-  # Teardown (auskommentiert: Ressourcen bleiben stehen, um testzeiten zu verkürzen)
-  # Teardown:
-  #   runs-on: ubuntu-latest
-  #   needs: Locust-Runner-2
-  #   if: always()
-  #   steps:
-  #     - name: Checkout Code
-  #       uses: actions/checkout@v4
-  #
-  #     - name: AWS Credential via OIDC
-  #       uses: aws-actions/configure-aws-credentials@v4
-  #       with:
-  #         aws-region: ${{env.AWS_REGION}}
-  #         role-to-assume: ${{env.ROLE_TO_ASSUME}}
-  #
-  #     - name: Setup-Terraform
-  #       uses: hashicorp/setup-terraform@v3
-  #       with:
-  #         terraform_version: 1.5.0
-  #
-  #     - name: Terraform Destroy
-  #       working-directory: ./terraform
-  #       run: |
-  #         terraform init
-  #         terraform destroy -auto-approve \
-  #           -var="app_image_uri=unused" \
-  #           -var="locust_image_uri=unused"
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: AWS Credential via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Download environment_infos
+      uses: actions/download-artifact@v4
+      with:
+        name: environment_infos
+        path: /tmp/infra
+    - name: DB migrieren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: DB leeren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: Locust-Test-2 in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}" --test "Locust-Test-2"
+  Locust-Runner-3:
+    runs-on: ubuntu-latest
+    needs: Locust-Runner-2
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        env:
+        - low
+        - medium
+        - high
+        - extreme
+        - prod
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: AWS Credential via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Download environment_infos
+      uses: actions/download-artifact@v4
+      with:
+        name: environment_infos
+        path: /tmp/infra
+    - name: DB migrieren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: DB leeren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: Locust-Test-3 in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}" --test "Locust-Test-3"
+  Locust-Runner-4:
+    runs-on: ubuntu-latest
+    needs: Locust-Runner-3
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        env:
+        - low
+        - medium
+        - high
+        - extreme
+        - prod
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: AWS Credential via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Download environment_infos
+      uses: actions/download-artifact@v4
+      with:
+        name: environment_infos
+        path: /tmp/infra
+    - name: DB migrieren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: DB leeren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: Locust-Test-4 in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}" --test "Locust-Test-4"
+  Locust-Runner-5:
+    runs-on: ubuntu-latest
+    needs: Locust-Runner-4
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        env:
+        - low
+        - medium
+        - high
+        - extreme
+        - prod
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: AWS Credential via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Download environment_infos
+      uses: actions/download-artifact@v4
+      with:
+        name: environment_infos
+        path: /tmp/infra
+    - name: DB migrieren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: DB leeren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: Locust-Test-5 in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}" --test "Locust-Test-5"
+  Locust-Runner-6:
+    runs-on: ubuntu-latest
+    needs: Locust-Runner-5
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        env:
+        - low
+        - medium
+        - high
+        - extreme
+        - prod
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: AWS Credential via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Download environment_infos
+      uses: actions/download-artifact@v4
+      with:
+        name: environment_infos
+        path: /tmp/infra
+    - name: DB migrieren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: DB leeren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: Locust-Test-6 in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}" --test "Locust-Test-6"
+  Locust-Runner-7:
+    runs-on: ubuntu-latest
+    needs: Locust-Runner-6
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        env:
+        - low
+        - medium
+        - high
+        - extreme
+        - prod
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: AWS Credential via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Download environment_infos
+      uses: actions/download-artifact@v4
+      with:
+        name: environment_infos
+        path: /tmp/infra
+    - name: DB migrieren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: DB leeren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: Locust-Test-7 in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}" --test "Locust-Test-7"
+  Locust-Runner-8:
+    runs-on: ubuntu-latest
+    needs: Locust-Runner-7
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        env:
+        - low
+        - medium
+        - high
+        - extreme
+        - prod
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: AWS Credential via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Download environment_infos
+      uses: actions/download-artifact@v4
+      with:
+        name: environment_infos
+        path: /tmp/infra
+    - name: DB migrieren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: DB leeren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: Locust-Test-8 in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}" --test "Locust-Test-8"
+  Locust-Runner-9:
+    runs-on: ubuntu-latest
+    needs: Locust-Runner-8
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        env:
+        - low
+        - medium
+        - high
+        - extreme
+        - prod
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: AWS Credential via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Download environment_infos
+      uses: actions/download-artifact@v4
+      with:
+        name: environment_infos
+        path: /tmp/infra
+    - name: DB migrieren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: DB leeren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: Locust-Test-9 in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}" --test "Locust-Test-9"
+  Locust-Runner-10:
+    runs-on: ubuntu-latest
+    needs: Locust-Runner-9
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        env:
+        - low
+        - medium
+        - high
+        - extreme
+        - prod
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: AWS Credential via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Download environment_infos
+      uses: actions/download-artifact@v4
+      with:
+        name: environment_infos
+        path: /tmp/infra
+    - name: DB migrieren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: DB leeren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: Locust-Test-10 in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}" --test "Locust-Test-10"
+  Locust-Runner-11:
+    runs-on: ubuntu-latest
+    needs: Locust-Runner-10
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        env:
+        - low
+        - medium
+        - high
+        - extreme
+        - prod
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: AWS Credential via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Download environment_infos
+      uses: actions/download-artifact@v4
+      with:
+        name: environment_infos
+        path: /tmp/infra
+    - name: DB migrieren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: DB leeren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: Locust-Test-11 in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}" --test "Locust-Test-11"
+  Locust-Runner-12:
+    runs-on: ubuntu-latest
+    needs: Locust-Runner-11
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        env:
+        - low
+        - medium
+        - high
+        - extreme
+        - prod
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: AWS Credential via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Download environment_infos
+      uses: actions/download-artifact@v4
+      with:
+        name: environment_infos
+        path: /tmp/infra
+    - name: DB migrieren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: DB leeren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: Locust-Test-12 in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}" --test "Locust-Test-12"
+  Locust-Runner-13:
+    runs-on: ubuntu-latest
+    needs: Locust-Runner-12
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        env:
+        - low
+        - medium
+        - high
+        - extreme
+        - prod
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: AWS Credential via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Download environment_infos
+      uses: actions/download-artifact@v4
+      with:
+        name: environment_infos
+        path: /tmp/infra
+    - name: DB migrieren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: DB leeren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: Locust-Test-13 in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}" --test "Locust-Test-13"
+  Locust-Runner-15:
+    runs-on: ubuntu-latest
+    needs: Locust-Runner-13
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        env:
+        - low
+        - medium
+        - high
+        - extreme
+        - prod
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: AWS Credential via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Download environment_infos
+      uses: actions/download-artifact@v4
+      with:
+        name: environment_infos
+        path: /tmp/infra
+    - name: DB migrieren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: DB leeren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: Locust-Test-15 in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}" --test "Locust-Test-15"
+  Locust-Runner-16:
+    runs-on: ubuntu-latest
+    needs: Locust-Runner-15
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        env:
+        - low
+        - medium
+        - high
+        - extreme
+        - prod
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: AWS Credential via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Download environment_infos
+      uses: actions/download-artifact@v4
+      with:
+        name: environment_infos
+        path: /tmp/infra
+    - name: DB migrieren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: DB leeren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: Locust-Test-16 in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}" --test "Locust-Test-16"
+  Locust-Runner-17:
+    runs-on: ubuntu-latest
+    needs: Locust-Runner-16
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        env:
+        - low
+        - medium
+        - high
+        - extreme
+        - prod
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: AWS Credential via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Download environment_infos
+      uses: actions/download-artifact@v4
+      with:
+        name: environment_infos
+        path: /tmp/infra
+    - name: DB migrieren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: DB leeren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: Locust-Test-17 in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}" --test "Locust-Test-17"
+  Locust-Runner-18:
+    runs-on: ubuntu-latest
+    needs: Locust-Runner-17
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        env:
+        - low
+        - medium
+        - high
+        - extreme
+        - prod
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: AWS Credential via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Download environment_infos
+      uses: actions/download-artifact@v4
+      with:
+        name: environment_infos
+        path: /tmp/infra
+    - name: DB migrieren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: DB leeren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: Locust-Test-18 in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}" --test "Locust-Test-18"
+  Locust-Runner-19:
+    runs-on: ubuntu-latest
+    needs: Locust-Runner-18
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        env:
+        - low
+        - medium
+        - high
+        - extreme
+        - prod
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: AWS Credential via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Download environment_infos
+      uses: actions/download-artifact@v4
+      with:
+        name: environment_infos
+        path: /tmp/infra
+    - name: DB migrieren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: DB leeren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: Locust-Test-19 in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}" --test "Locust-Test-19"
+  Locust-Runner-20:
+    runs-on: ubuntu-latest
+    needs: Locust-Runner-19
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        env:
+        - low
+        - medium
+        - high
+        - extreme
+        - prod
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: AWS Credential via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Download environment_infos
+      uses: actions/download-artifact@v4
+      with:
+        name: environment_infos
+        path: /tmp/infra
+    - name: DB migrieren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: DB leeren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: Locust-Test-20 in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}" --test "Locust-Test-20"
+  Locust-Runner-21:
+    runs-on: ubuntu-latest
+    needs: Locust-Runner-20
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        env:
+        - low
+        - medium
+        - high
+        - extreme
+        - prod
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: AWS Credential via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{env.AWS_REGION}}
+        role-to-assume: ${{env.ROLE_TO_ASSUME}}
+    - name: Download environment_infos
+      uses: actions/download-artifact@v4
+      with:
+        name: environment_infos
+        path: /tmp/infra
+    - name: DB migrieren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py migrate --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: DB leeren in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py clean --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}"
+    - name: Locust-Test-21 in ${{ matrix.env }}
+      run: python3 terraform/tests/benchmark/run_ecs_task.py run --env-info /tmp/infra/environment_infos.json
+        --env "${{ matrix.env }}" --test "Locust-Test-21"
