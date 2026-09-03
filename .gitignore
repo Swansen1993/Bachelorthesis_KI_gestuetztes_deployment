@@ -10,6 +10,7 @@ terraform/secrets.auto.tfvars
 *.tfvars.local
 
 terraform/DEPLOYMENT_HANDBUCH.md
+/PROJEKTHANDBUCH.md
 
 # Variante-A-Vorlagen (lokal, nicht versionieren)
 /VARIANTE_A_TEMPLATE.md

@@ -54,7 +54,12 @@ class Projekt01Tests(HttpUser):
                     art_res.json().get("article", {}).get("slug", self.target_slug)
                 )
 
-    @task(1 if ACTIVE_TARGET == "pos_001_post_add_article" else 0)
+    @task(
+        1
+        if ACTIVE_TARGET
+        in ["pos_001_post_add_article", "pos_008_post_create_new_article", "pos_016_post_create_article"]
+        else 0
+    )
     def add_article_test(self):
         unique_id = uuid.uuid4().hex[:8]
 
@@ -74,10 +79,15 @@ class Projekt01Tests(HttpUser):
             name="/api/articles [POST add]",
         )
 
-    @task(1 if ACTIVE_TARGET == "pos_002_get_list_by_filters" else 0)
+    @task(
+        1
+        if ACTIVE_TARGET
+        in ["pos_002_get_list_by_filters", "pos_015_get_global_article_feed"]
+        else 0
+    )
     def list_by_filters_get(self):
         self.client.get(
-            "/api/articles?limit=10&offset=0",
+            f"/api/articles?limit=10&offset=0&author={self.username}",
             headers=self.headers,
             name="/api/articles [GET list_by_filters]",
         )
@@ -114,7 +124,12 @@ class Projekt01Tests(HttpUser):
             name="/api/articles/:slug [favorite_exists]",
         )
 
-    @task(1 if ACTIVE_TARGET == "pos_005_post_article_comment_into_repository" else 0)
+    @task(
+        1
+        if ACTIVE_TARGET
+        in ["pos_005_post_article_comment_into_repository", "pos_018_post_create_comment"]
+        else 0
+    )
     def bench_comment_add(self):
         self.client.post(
             f"/api/articles/{self.target_slug}/comments",
@@ -134,7 +149,11 @@ class Projekt01Tests(HttpUser):
     @task(
         1
         if ACTIVE_TARGET
-        in ["pos_007_post_create_follow_in_repository", "pos_012_post_follow_user"]
+        in [
+            "pos_007_post_create_follow_in_repository",
+            "pos_012_post_follow_user",
+            "pos_019_post_follow_username",
+        ]
         else 0
     )
     def bench_create_follow(self):
@@ -144,12 +163,86 @@ class Projekt01Tests(HttpUser):
             name="/api/profiles/:username/follow [follow_user]",
         )
 
-    @task(1 if ACTIVE_TARGET == "sign_in_user" else 0)
+    @task(
+        1
+        if ACTIVE_TARGET
+        in ["pos_010_post_sign_in_user", "pos_017_post_login_user"]
+        else 0
+    )
     def bench_sign_in_user(self):
         self.client.post(
             "/api/users/login",
             json={"user": {"email": self.email, "password": self.password}},
             name="/api/users/login [sign_in_user]",
+        )
+
+    @task(1 if ACTIVE_TARGET == "pos_011_post_create_user" else 0)
+    def register_user_test(self):
+        username = f"user_{uuid.uuid4().hex[:8]}"
+        self.client.post(
+            "/api/users",
+            json={
+                "user": {
+                    "username": username,
+                    "email": f"{username}@test.com",
+                    "password": self.password,
+                }
+            },
+            name="/api/users [POST register]",
+        )
+
+    @task(1 if ACTIVE_TARGET == "pos_013_get_article_comments" else 0)
+    def get_article_comments_test(self):
+        self.client.get(
+            f"/api/articles/{self.target_slug}/comments",
+            headers=self.headers,
+            name="/api/articles/:slug/comments [GET]",
+        )
+
+    @task(1 if ACTIVE_TARGET == "pos_009_delete_article_by_slug" else 0)
+    def delete_article_test(self):
+        unique_id = uuid.uuid4().hex[:8]
+        art_res = self.client.post(
+            "/api/articles",
+            json={
+                "article": {
+                    "title": f" delete_me_{unique_id}",
+                    "description": "Beschreibung delete test",
+                    "body": "Testartikel inhalt",
+                    "tagList": [],
+                }
+            },
+            headers=self.headers,
+            name="/api/articles [POST setup]",
+        )
+        if art_res.status_code in [200, 201]:
+            slug = art_res.json().get("article", {}).get("slug")
+            self.client.delete(
+                f"/api/articles/{slug}",
+                headers=self.headers,
+                name="/api/articles/:slug [DELETE]",
+            )
+
+    @task(1 if ACTIVE_TARGET == "pos_020_put_update_current_user" else 0)
+    def update_current_user_test(self):
+        self.client.put(
+            "/api/user",
+            json={
+                "user": {
+                    "bio": "Updated bio for benchmark",
+                    "image": "https://api.realworld.io/images/smiley-cyrus.jpeg",
+                }
+            },
+            headers=self.headers,
+            name="/api/user [PUT update_current_user]",
+        )
+
+    @task(1 if ACTIVE_TARGET == "pos_021_get_current_user" else 0)
+    def get_current_user_test(self):
+        self.client.get(
+            "/api/user",
+            headers=self.headers,
+            name="/api/user [GET current_user]",
         )
 
 
