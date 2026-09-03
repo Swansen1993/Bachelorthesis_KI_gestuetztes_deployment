@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta
 from typing import Any, Unpack
 
@@ -5,19 +6,19 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response
 
-from conduit.core.exceptions import RateLimitExceededException 
+from conduit.core.exceptions import RateLimitExceededException
 
 
 class RateLimitingMiddleware(BaseHTTPMiddleware):
-    """  
-    Middleware  that handle requests rate limiting. 
-    """  
+    """
+    Middleware  that handle requests rate limiting.
+    """
 
     rate_limit_duration = timedelta(minutes=1)
-    rate_limit_requests = 100
 
     def __init__(self, *args: *tuple[Any], **kwargs: Any):
         super().__init__(*args, **kwargs)
+        self.rate_limit_requests = int(os.environ.get("RATE_LIMIT_REQUESTS", "100"))
         # Dictionary to store request counts for each IP.
         self.request_counts: dict[str, tuple[int, datetime]] = {}
 

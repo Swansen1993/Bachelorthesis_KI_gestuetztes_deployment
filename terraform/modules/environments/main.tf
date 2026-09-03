@@ -224,7 +224,8 @@ resource "aws_ecs_task_definition" "app_tasks" { // task definition legt die Par
       { name = "POSTGRES_PASSWORD", value = random_password.db_password.result },
       { name = "POSTGRES_DB", value = var.db_name },
       { name = "JWT_SECRET_KEY", value = var.jwt_secret_key },
-      { name = "SECRET_KEY", value = var.jwt_secret_key }
+      { name = "SECRET_KEY", value = var.jwt_secret_key },
+      { name = "RATE_LIMIT_REQUESTS", value = "1000000" }
     ]
 
     portMappings = [{
