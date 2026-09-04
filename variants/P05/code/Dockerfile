@@ -1,41 +1,18 @@
-ARG PYTHON_VERSION=3.13
-FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-trixie-slim
+FROM python:3.13-slim
 
-ARG APP_VERSION=develop
-ARG ENVIRONMENT="prod"
+WORKDIR /app
 
-ENV APP_VERSION=${APP_VERSION}
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV UV_HTTP_TIMEOUT=300
-ENV UV_LINK_MODE=copy
-ENV UV_PROJECT_ENVIRONMENT=/usr/local
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-WORKDIR /code
+COPY src/ ./src/
+COPY seed/ /app/seed/
 
-COPY pyproject.toml uv.lock README.md ./
+ENV PYTHONPATH=/app/src/src
 
-RUN if [ "${ENVIRONMENT}" = "prod" ]; then \
-      uv sync --frozen --no-cache --no-dev --no-install-project; \
-    else \
-      uv sync --frozen --no-cache --dev --no-install-project; \
-    fi
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 
-COPY . .
-
-RUN if [ "${ENVIRONMENT}" = "prod" ]; then \
-      uv sync --frozen --no-cache --no-dev; \
-    else \
-      uv sync --frozen --no-cache --dev; \
-    fi
-
-RUN groupadd -r runner
-RUN useradd -r -g runner -m -s /usr/sbin/nologin runner
-RUN chown -R runner:root /code
-RUN chmod -R g=u /code
-
-USER runner
-
-EXPOSE 8000
-
-ENTRYPOINT [ "/code/docker-entrypoint.sh" ]
+WORKDIR /app/src
+EXPOSE 8080
+ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]
+CMD ["uvicorn", "app.main.run:make_app", "--host", "0.0.0.0", "--port", "8080"]

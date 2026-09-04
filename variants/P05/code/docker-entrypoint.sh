@@ -1,19 +1,14 @@
-#!/bin/bash
-set -e
-
-PORT=${2:-8000}
-
-case "$1" in
-    start)
-        alembic upgrade head
-        exec uvicorn app.main.run:make_app --factory --host 0.0.0.0 --port "$PORT" --reload
-        ;;
-    pytest)
-        alembic upgrade head
-        shift
-        exec pytest "$@"
-        ;;
-    *)
-        exec "$@"
-        ;;
-esac
+#!/bin/sh
+if [ -z "${JWT_SECRET}" ] && [ -n "${SECRET_KEY}" ]; then
+  JWT_SECRET="${SECRET_KEY}"
+  export JWT_SECRET
+fi
+if [ -z "${JWT_SECRET}" ] && [ -n "${JWT_SECRET_KEY}" ]; then
+  JWT_SECRET="${JWT_SECRET_KEY}"
+  export JWT_SECRET
+fi
+if [ -z "${PASSWORD_PEPPER}" ]; then
+  PASSWORD_PEPPER="benchmark-pepper-0123456789abcdef0123456789abcdef"
+  export PASSWORD_PEPPER
+fi
+exec "$@"

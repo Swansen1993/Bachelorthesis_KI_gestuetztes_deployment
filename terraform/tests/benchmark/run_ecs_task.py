@@ -246,6 +246,37 @@ def cmd_migrate(args):
     return 0 if ok else 1
 
 
+def cmd_seed(args):
+    env_infos = load_env_infos(args.env_info)
+    if args.env not in env_infos:
+        print(
+            f"Umgebung '{args.env}' nicht in environment_infos.json gefunden. "
+            f"Vorhanden: {sorted(env_infos)}"
+        )
+        return 1
+    info = env_infos[args.env]
+
+    config = load_test_mapping(resolve_mapping(args.mapping))
+    seed_cmd = config.get("db_seed")
+    if not seed_cmd:
+        print(
+            f"Kein 'db_seed'-Kommando in {args.mapping} konfiguriert - Seed uebersprungen."
+        )
+        return 0
+
+    overrides = [{"name": CONTAINER_APP, "command": seed_cmd}]
+
+    ok = run_task_and_wait(
+        info,
+        info["app_task_family"],
+        overrides,
+        timeout_s=args.timeout,
+        log_group=LOG_APP.format(env=args.env),
+        label=f"db-seed-{args.env}",
+    )
+    return 0 if ok else 1
+
+
 def cmd_run(args):
     env_infos = load_env_infos(args.env_info)
     if args.env not in env_infos:
@@ -318,6 +349,8 @@ def cmd_benchmark(args):
         ok = cmd_migrate(ns) == 0
         if ok:
             ok = cmd_clean(ns) == 0
+        if ok:
+            ok = cmd_seed(ns) == 0
         if ok:
             ok = cmd_run(ns) == 0
         return env, ok
