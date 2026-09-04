@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import csv
-import glob
 import json
 import os
 import re
@@ -53,11 +52,17 @@ def list_metric_keys(bucket, variant):
     return [k for k in keys if k.endswith("_metrics.json")]
 
 
-def find_snippet_file(snippets_dir, pos):
+def find_snippet_file(snippets_dir, variant, pos):
     if not snippets_dir or not pos:
         return None
-    matches = glob.glob(os.path.join(snippets_dir, f"[P01]_{pos}_*.py"))
-    return matches[0] if matches else None
+    prefix = f"[{variant}]_{pos}_"
+    try:
+        for name in os.listdir(snippets_dir):
+            if name.startswith(prefix) and name.endswith(".py"):
+                return os.path.join(snippets_dir, name)
+    except OSError:
+        return None
+    return None
 
 
 def extract_meta(key):
@@ -83,7 +88,7 @@ def main():
     parser.add_argument(
         "--snippets-dir",
         default="/Users/svenniederlohner/Desktop/DataRepositoryBachelor/ExtractedDataPositiveTraining/training_data_positive",
-        help="Ordner mit den [P01]_NNN_*.py Snippet-Dateien",
+        help="Ordner mit den [P0X]_NNN_*.py Snippet-Dateien (X = Variante)",
     )
     parser.add_argument(
         "--out", default="export_kpis", help="Ausgabeordner (Default: export_kpis)"
@@ -120,7 +125,7 @@ def main():
         }
         rows.append(row)
 
-        snippet_file = find_snippet_file(args.snippets_dir, pos)
+        snippet_file = find_snippet_file(args.snippets_dir, variant, pos)
         snippet_code = ""
         if snippet_file:
             with open(snippet_file, encoding="utf-8", errors="replace") as fh:

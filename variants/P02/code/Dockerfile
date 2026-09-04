@@ -1,20 +1,17 @@
 FROM python:3.14-slim
 
 WORKDIR /app
-RUN groupadd -r app \
-  && useradd --no-log-init -m -g app app \
-  && chown app /app
-USER app
 
-COPY --from=astral/uv:latest /uv /bin/
-RUN --mount=type=cache,target=/app/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY --chown=app:app . /app
-RUN --mount=type=cache,target=/app/.cache/uv \
-    uv sync --frozen
+COPY src/ ./src/
 
-EXPOSE 8000
-CMD ["uv", "run", "fastapi", "dev", "--host", "0.0.0.0", "--port", "8000"]
+WORKDIR /app/src
+
+ENV APP_CONFIG_FILE=compose
+
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+EXPOSE 8080
+ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]

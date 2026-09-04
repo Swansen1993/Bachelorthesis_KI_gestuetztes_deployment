@@ -1,0 +1,8 @@
+{
+  "Locust-Test-1": "pos_022_create_note",
+  "Locust-Test-2": "pos_023_read_all_notes",
+  "Locust-Test-3": "pos_024_read_note",
+  "Locust-Test-4": "pos_025_update_note",
+  "Locust-Test-5": "pos_026_delete_note",
+  "db_migrate": ["python", "-m", "alembic", "-c", "alembic.ini", "upgrade", "head"]
+}
