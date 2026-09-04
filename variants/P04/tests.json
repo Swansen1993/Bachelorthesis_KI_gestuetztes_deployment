@@ -1,0 +1,9 @@
+{
+  "Locust-Test-1": "pos_029_create_user",
+  "Locust-Test-2": "pos_030_create_user",
+  "Locust-Test-3": "pos_031_login",
+  "Locust-Test-4": "pos_032_login",
+  "Locust-Test-5": "pos_033_register",
+  "Locust-Test-6": "pos_034_create_post",
+  "db_migrate": ["python", "-c", "from app.db import create_tables; create_tables()"]
+}
