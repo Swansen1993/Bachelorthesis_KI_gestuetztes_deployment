@@ -7,6 +7,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ ./src/
 
+RUN sed -i 's/, connect_args={"check_same_thread": False}//' /app/src/examples/full-example/app/db/__init__.py
+
 ENV PYTHONPATH=/app/src
 
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
