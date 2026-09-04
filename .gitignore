@@ -4,6 +4,10 @@ variants/P01/code/src/fastapi-realworld-backend-master/fastapi-realworld-backend
 .DS_Store
 **/.DS_Store
 
+# Python-Cache (nicht versionieren)
+__pycache__/
+*.pyc
+
 
 terraform/secrets.tfvars
 terraform/secrets.auto.tfvars
