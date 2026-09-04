@@ -88,6 +88,15 @@ resource "aws_vpc_security_group_ingress_rule" "ingressrulevpc" {
   cidr_ipv4         = cidrsubnet(var.vpc_cidr, 8, 1)
 }
 
+resource "aws_vpc_security_group_ingress_rule" "ingress_extra_port" {
+  count             = var.variant_id == "P07" ? 1 : 0
+  security_group_id = aws_security_group.app_security_rules.id
+  ip_protocol       = "tcp"
+  from_port         = 8081
+  to_port           = 8081
+  cidr_ipv4         = cidrsubnet(var.vpc_cidr, 8, 1)
+}
+
 resource "aws_vpc_security_group_egress_rule" "egressrulevpc" {
   security_group_id = aws_security_group.app_security_rules.id
   ip_protocol       = "-1"
@@ -228,10 +237,13 @@ resource "aws_ecs_task_definition" "app_tasks" { // task definition legt die Par
       { name = "RATE_LIMIT_REQUESTS", value = "1000000" }
     ]
 
-    portMappings = [{
+    portMappings = concat([{
       containerPort = 8080
       hostPort      = 8080
-    }]
+      }], var.variant_id == "P07" ? [{
+      containerPort = 8081
+      hostPort      = 8081
+    }] : [])
 
     logConfiguration = {
       logDriver = "awslogs"
