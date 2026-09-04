@@ -266,7 +266,7 @@ def cmd_run(args):
         return 1
     method = mapping[args.test]
 
-    variant = args.variant or os.environ.get("VARIANT_ID", "v1")
+    variant = args.variant or os.environ.get("VARIANT_ID", "P01")
     metrics_file = f"{method}_{args.env}_metrics.json"
     s3_path = f"{variant}/{method}/{args.env}/{metrics_file}"
 
@@ -394,7 +394,7 @@ def main():
     p_run.add_argument(
         "--variant",
         default=None,
-        help="Varianten-ID fuer den S3-Pfad (Default: env VARIANT_ID oder v1)",
+        help="Varianten-ID fuer den S3-Pfad (Default: env VARIANT_ID oder P01)",
     )
     p_run.add_argument(
         "--timeout",
@@ -423,7 +423,7 @@ def main():
     p_benchmark.add_argument(
         "--variant",
         default=None,
-        help="Varianten-ID fuer den S3-Pfad (Default: env VARIANT_ID oder v1)",
+        help="Varianten-ID fuer den S3-Pfad (Default: env VARIANT_ID oder P01)",
     )
     p_benchmark.add_argument(
         "--timeout",

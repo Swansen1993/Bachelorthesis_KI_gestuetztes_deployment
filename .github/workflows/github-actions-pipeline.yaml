@@ -1,29 +1,29 @@
 name: Github Actions Pipeline
 on:
-  push:
-    branches:
-      - test/P01
+  #push:
+  # branches:
+  #  - "test/P*"
   workflow_dispatch:
     inputs:
       variant:
         description: Welche Variante soll laufen?
         required: true
-        default: p01
+        default: P01
         type: choice
         options:
-          - p01
-          - p02
-          - p03
-          - p04
-          - p05
-          - p06
-          - p07
-          - p08
-          - p09
-          - p10
-          - p11
-          - p12
-          - p13
+          - P01
+          - P02
+          - P03
+          - P04
+          - P05
+          - P06
+          - P07
+          - P08
+          - P09
+          - P10
+          - P11
+          - P12
+          - P13
 permissions:
   id-token: write
   contents: read
@@ -32,8 +32,8 @@ env:
   ROLE_TO_ASSUME: arn:aws:iam::415221799955:role/github_worklow_aws
   ECR_APP_REPO: app-repo
   ECR_LOCUST_REPO: locust-repo
-  VARIANT_ID: v1
-  VARIANT_PATH: ${{ inputs.variant || 'p01' }}
+  VARIANT_ID: ${{ inputs.variant || 'P01' }}
+  VARIANT_PATH: ${{ inputs.variant || 'P01' }}
   TF_VAR_db_username: ${{ secrets.DB_USERNAME }}
   TF_VAR_db_name: ${{ secrets.DB_NAME }}
   TF_VAR_jwt_secret_key: ${{ secrets.JWT_SECRET_KEY }}
@@ -43,6 +43,13 @@ jobs:
     steps:
       - name: Configure AWS
         uses: actions/checkout@v5
+      - name: Variante aus Branch ableiten
+        run: |
+          if [ -z "${{ inputs.variant }}" ] && [[ "${GITHUB_REF_NAME}" == test/P* ]]; then
+            VARIANT="${GITHUB_REF_NAME#test/}"
+            echo "VARIANT_ID=${VARIANT}" >> "$GITHUB_ENV"
+            echo "VARIANT_PATH=${VARIANT}" >> "$GITHUB_ENV"
+          fi
       - name: AWS_Credentials_Via_OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -55,34 +62,31 @@ jobs:
         env:
           REGISTRY: ${{steps.login-ecr.outputs.registry}}
           IMAGE_TAG: ${{github.sha}}
-        run:
-          "docker build -t $REGISTRY/$ECR_APP_REPO:$IMAGE_TAG -t $REGISTRY/$ECR_APP_REPO:latest
-          variants/$VARIANT_PATH/code &&
-
+        run: |
+          docker build -t $REGISTRY/$ECR_APP_REPO:$IMAGE_TAG -t $REGISTRY/$ECR_APP_REPO:latest variants/$VARIANT_PATH/code &&
           docker push $REGISTRY/$ECR_APP_REPO:$IMAGE_TAG &&
-
           docker push $REGISTRY/$ECR_APP_REPO:latest
-
-          "
       - name: Build and Push Locust image in AWSECR
         env:
           REGISTRY: ${{steps.login-ecr.outputs.registry}}
           IMAGE_TAG: ${{github.sha}}
-        run:
-          "docker build -t $REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG -t $REGISTRY/$ECR_LOCUST_REPO:latest
-          variants/$VARIANT_PATH/locust &&
-
+        run: |
+          docker build -t $REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG -t $REGISTRY/$ECR_LOCUST_REPO:latest variants/$VARIANT_PATH/locust &&
           docker push $REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG &&
-
           docker push $REGISTRY/$ECR_LOCUST_REPO:latest
-
-          "
   Deploy:
     runs-on: ubuntu-latest
     needs: Build-and-Push
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+      - name: Variante aus Branch ableiten
+        run: |
+          if [ -z "${{ inputs.variant }}" ] && [[ "${GITHUB_REF_NAME}" == test/P* ]]; then
+            VARIANT="${GITHUB_REF_NAME#test/}"
+            echo "VARIANT_ID=${VARIANT}" >> "$GITHUB_ENV"
+            echo "VARIANT_PATH=${VARIANT}" >> "$GITHUB_ENV"
+          fi
       - name: AWS Credential via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -102,15 +106,16 @@ jobs:
           REGISTRY: ${{steps.login-ecr.outputs.registry}}
           IMAGE_TAG: ${{github.sha}}
         working-directory: ./terraform
-        run:
-          "terraform init\nterraform apply -auto-approve \\\n  -var=\"app_image_uri=$REGISTRY/$ECR_APP_REPO:$IMAGE_TAG\"\
-          \ \\\n  -var=\"locust_image_uri=$REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG\"\n"
+        run: |
+          terraform init -backend-config="key=${VARIANT_PATH}/state.tfstate"
+          terraform apply -auto-approve \
+            -var="app_image_uri=$REGISTRY/$ECR_APP_REPO:$IMAGE_TAG" \
+            -var="locust_image_uri=$REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG" \
+            -var="variant_id=${VARIANT_ID}"
       - name: Umgebungsdetails exportieren
         working-directory: ./terraform
-        run:
-          "terraform output -json environment_infos > /tmp/environment_infos.json
-
-          "
+        run: |
+          terraform output -json environment_infos > /tmp/environment_infos.json
       - name: Upload environment_infos
         uses: actions/upload-artifact@v4
         with:
@@ -124,6 +129,13 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+      - name: Variante aus Branch ableiten
+        run: |
+          if [ -z "${{ inputs.variant }}" ] && [[ "${GITHUB_REF_NAME}" == test/P* ]]; then
+            VARIANT="${GITHUB_REF_NAME#test/}"
+            echo "VARIANT_ID=${VARIANT}" >> "$GITHUB_ENV"
+            echo "VARIANT_PATH=${VARIANT}" >> "$GITHUB_ENV"
+          fi
       - id: read
         name: Tests aus tests.json lesen
         run: |-
@@ -144,6 +156,13 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+      - name: Variante aus Branch ableiten
+        run: |
+          if [ -z "${{ inputs.variant }}" ] && [[ "${GITHUB_REF_NAME}" == test/P* ]]; then
+            VARIANT="${GITHUB_REF_NAME#test/}"
+            echo "VARIANT_ID=${VARIANT}" >> "$GITHUB_ENV"
+            echo "VARIANT_PATH=${VARIANT}" >> "$GITHUB_ENV"
+          fi
       - name: AWS Credential via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -155,9 +174,10 @@ jobs:
           name: environment_infos
           path: /tmp/infra
       - name: Benchmark ${{ matrix.test }} (alle Umgebungen parallel)
-        run:
-          python3 terraform/tests/benchmark/run_ecs_task.py benchmark --env-info
-          /tmp/infra/environment_infos.json --test "${{ matrix.test }}"
+        run: |-
+          python3 terraform/tests/benchmark/run_ecs_task.py benchmark \
+            --env-info /tmp/infra/environment_infos.json \
+            --test "${{ matrix.test }}"
   KPI-Export:
     runs-on: ubuntu-latest
     needs: Locust-Runner
@@ -165,6 +185,13 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+      - name: Variante aus Branch ableiten
+        run: |
+          if [ -z "${{ inputs.variant }}" ] && [[ "${GITHUB_REF_NAME}" == test/P* ]]; then
+            VARIANT="${GITHUB_REF_NAME#test/}"
+            echo "VARIANT_ID=${VARIANT}" >> "$GITHUB_ENV"
+            echo "VARIANT_PATH=${VARIANT}" >> "$GITHUB_ENV"
+          fi
       - name: AWS Credential via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:

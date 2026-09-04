@@ -18,7 +18,7 @@ variable "s3_bucket_aws" {
 
 variable "variant_id" {
   type    = string
-  default = "v1"
+  default = "P01"
 }
 
 variable "target_method" {

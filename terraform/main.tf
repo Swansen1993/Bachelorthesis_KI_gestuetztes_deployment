@@ -1,7 +1,6 @@
 terraform {
   backend "s3" {
     bucket = "terraform-state-bucket-415221799955-eu-central-1-an"
-    key    = "state.tfstate"
     region = "eu-central-1"
   }
   required_version = ">= 1.5.0"

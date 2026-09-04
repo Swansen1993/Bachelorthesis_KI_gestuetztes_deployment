@@ -79,7 +79,7 @@ def main():
         default="kpi-save-bucket-415221799955-eu-central-1-an",
         help="S3-Bucket mit den KPI-Dateien",
     )
-    parser.add_argument("--variant", default="v1", help="Varianten-Prefix im Bucket")
+    parser.add_argument("--variant", default="P01", help="Varianten-Prefix im Bucket")
     parser.add_argument(
         "--snippets-dir",
         default="/Users/svenniederlohner/Desktop/DataRepositoryBachelor/ExtractedDataPositiveTraining/training_data_positive",

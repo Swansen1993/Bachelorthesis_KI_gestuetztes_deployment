@@ -65,9 +65,9 @@ variable "s3_bucket_aws" {
 
 
 variable "variant_id" {
-  description = "ID des untersuchten Code-Beispiels (z. B. v1 bis v160)"
+  description = "ID des untersuchten Code-Beispiels (z. B. P01 bis P13)"
   type        = string
-  default     = "v1"
+  default     = "P01"
 }
 
 variable "target_method" {
