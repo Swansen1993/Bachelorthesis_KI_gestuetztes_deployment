@@ -1,8 +1,3 @@
-*
-!mailer
-!templates
-!LICENSE
-!Procfile
-!pyproject.toml
-!README.md
-!uv.lock
+.git
+**/.venv
+.DS_Store

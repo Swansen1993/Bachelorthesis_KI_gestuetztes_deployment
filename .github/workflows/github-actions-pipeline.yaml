@@ -61,7 +61,7 @@ jobs:
       - name: Build and Push App image in AWSECR
         env:
           REGISTRY: ${{steps.login-ecr.outputs.registry}}
-          IMAGE_TAG: ${{github.sha}}
+          IMAGE_TAG: ${{ github.sha }}-${{ github.run_id }}
         run: |
           docker build -t $REGISTRY/$ECR_APP_REPO:$IMAGE_TAG -t $REGISTRY/$ECR_APP_REPO:latest variants/$VARIANT_PATH/code &&
           docker push $REGISTRY/$ECR_APP_REPO:$IMAGE_TAG &&
@@ -69,7 +69,7 @@ jobs:
       - name: Build and Push Locust image in AWSECR
         env:
           REGISTRY: ${{steps.login-ecr.outputs.registry}}
-          IMAGE_TAG: ${{github.sha}}
+          IMAGE_TAG: ${{ github.sha }}-${{ github.run_id }}
         run: |
           docker build -t $REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG -t $REGISTRY/$ECR_LOCUST_REPO:latest variants/$VARIANT_PATH/locust &&
           docker push $REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG &&
@@ -104,7 +104,7 @@ jobs:
       - name: Terraform Apply
         env:
           REGISTRY: ${{steps.login-ecr.outputs.registry}}
-          IMAGE_TAG: ${{github.sha}}
+          IMAGE_TAG: ${{ github.sha }}-${{ github.run_id }}
         working-directory: ./terraform
         run: |
           terraform init -backend-config="key=${VARIANT_PATH}/state.tfstate"

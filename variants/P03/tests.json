@@ -1,0 +1,5 @@
+{
+  "Locust-Test-1": "pos_027_post_mail",
+  "Locust-Test-2": "pos_028_send_email",
+  "db_migrate": ["true"]
+}
