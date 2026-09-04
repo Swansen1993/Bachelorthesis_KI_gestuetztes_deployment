@@ -1,0 +1,15 @@
+{
+  "Locust-Test-1": "pos_035_list_users",
+  "Locust-Test-2": "pos_036_user_tx_storage",
+  "Locust-Test-3": "pos_037_transaction_manager",
+  "Locust-Test-4": "pos_038_flusher",
+  "Locust-Test-5": "pos_039_create_user",
+  "Locust-Test-6": "pos_040_activate_user",
+  "Locust-Test-7": "pos_041_set_user_password",
+  "Locust-Test-8": "pos_042_list_users",
+  "Locust-Test-9": "pos_043_create_user",
+  "Locust-Test-10": "pos_044_list_users",
+  "Locust-Test-11": "pos_045_log_in",
+  "db_migrate": ["python", "-m", "alembic", "-c", "alembic.ini", "upgrade", "head"],
+  "db_seed": ["python", "/app/seed/seed_super_admin.py"]
+}
