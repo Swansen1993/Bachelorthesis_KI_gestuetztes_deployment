@@ -1,0 +1,21 @@
+{
+  "Locust-Test-1": "pos_091_get_user_books",
+  "Locust-Test-2": "pos_092_get_user_by_email",
+  "Locust-Test-3": "pos_093_get_tags",
+  "Locust-Test-4": "pos_094_create_access_token",
+  "Locust-Test-5": "pos_095_decode_token",
+  "Locust-Test-6": "pos_096_create_url_safe_token",
+  "Locust-Test-7": "pos_097_create_book",
+  "Locust-Test-8": "pos_098_create_user",
+  "Locust-Test-9": "pos_099_add_review",
+  "Locust-Test-10": "pos_101_add_tags_to_book_svc",
+  "Locust-Test-11": "pos_102_add_tag",
+  "Locust-Test-12": "pos_103_create_book_ctrl",
+  "Locust-Test-13": "pos_104_update_book",
+  "Locust-Test-14": "pos_105_signup_ctrl",
+  "Locust-Test-15": "pos_106_login_ctrl",
+  "Locust-Test-16": "pos_107_add_review_ctrl",
+  "Locust-Test-17": "pos_108_add_tags_to_book_ctrl",
+  "db_migrate": ["alembic", "upgrade", "head"],
+  "db_seed": ["python", "/app/seed/seed_user.py"]
+}
