@@ -6,6 +6,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ ./src/
+COPY db_session_container.py /app/src/common/db/session.py
 
 ENV PYTHONPATH=/app/src
 
