@@ -1,0 +1,9 @@
+{
+  "Locust-Test-1": "pos_062_create_product",
+  "Locust-Test-2": "pos_063_create_order_from_cart",
+  "Locust-Test-3": "pos_064_admin_or_seller",
+  "Locust-Test-4": "pos_065_login",
+  "Locust-Test-5": "pos_066_signup",
+  "Locust-Test-6": "pos_067_create_order_controller",
+  "db_migrate": ["python", "/app/db_migrate.py"]
+}
