@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       variant:
-        description: Welche Variante soll laufen?
+        description: Welche Variante soll laufen ?
         required: true
         default: P01
         type: choice
