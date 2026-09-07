@@ -29,7 +29,10 @@ DB_CLEAN_CMD = (
     "            continue\n"
     "        await c.execute('TRUNCATE TABLE \"' + r['tablename'] + '\" RESTART IDENTITY CASCADE')\n"
     "    await c.close()\n"
-    "asyncio.run(_clean())"
+    "loop = asyncio.new_event_loop()\n"
+    "asyncio.set_event_loop(loop)\n"
+    "loop.run_until_complete(_clean())\n"
+    "loop.close()"
 )
 
 
