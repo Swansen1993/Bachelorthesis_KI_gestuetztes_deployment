@@ -1,0 +1,7 @@
+{
+  "Locust-Test-1": "pos_086_post_list",
+  "Locust-Test-2": "pos_087_tag_create",
+  "Locust-Test-3": "pos_088_sign_in",
+  "Locust-Test-4": "pos_089_post_by_id",
+  "db_migrate": ["alembic", "upgrade", "head"]
+}
