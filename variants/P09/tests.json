@@ -1,0 +1,8 @@
+{
+  "Locust-Test-1": "pos_068_user_crud",
+  "Locust-Test-2": "pos_069_crud_base_create",
+  "Locust-Test-3": "pos_072_login",
+  "Locust-Test-4": "pos_073_users_controller",
+  "db_migrate": ["python", "-m", "alembic", "upgrade", "head"],
+  "db_seed": ["python", "/app/src/users/scripts/initial_data.py"]
+}
