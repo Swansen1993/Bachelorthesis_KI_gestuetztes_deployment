@@ -1,0 +1,20 @@
+{
+  "transfers": [
+    {
+      "url": "/fc-barcelona/startseite/verein/131/transfer_id/999",
+      "from": {
+        "href": "/fc-barcelona/startseite/verein/131",
+        "clubName": "FC Barcelona"
+      },
+      "to": {
+        "href": "/paris-saint-germain/startseite/verein/583",
+        "clubName": "Paris Saint-Germain"
+      },
+      "date": "2021-08-10",
+      "upcoming": false,
+      "season": "21/22",
+      "marketValue": "0",
+      "fee": "0"
+    }
+  ]
+}

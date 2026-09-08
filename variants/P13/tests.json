@@ -1,0 +1,23 @@
+{
+  "Locust-Test-1": "pos_109_clubs_search",
+  "Locust-Test-2": "pos_110_competitions_search",
+  "Locust-Test-3": "pos_111_player_transfers",
+  "Locust-Test-4": "pos_112_player_stats",
+  "Locust-Test-5": "pos_113_player_profile",
+  "Locust-Test-6": "pos_114_player_xpath",
+  "Locust-Test-7": "pos_115_clubs_search_service",
+  "Locust-Test-8": "pos_116_competitions_search_service",
+  "Locust-Test-9": "pos_117_player_profile_service",
+  "Locust-Test-10": "pos_118_club_profile",
+  "Locust-Test-11": "pos_119_player_market_value",
+  "Locust-Test-12": "pos_120_player_transfers_service",
+  "Locust-Test-13": "pos_121_player_stats_service",
+  "Locust-Test-14": "pos_122_player_profile_ctrl",
+  "Locust-Test-15": "pos_123_player_market_value_ctrl",
+  "Locust-Test-16": "pos_124_player_transfers_ctrl",
+  "Locust-Test-17": "pos_125_player_stats_ctrl",
+  "Locust-Test-18": "pos_126_competitions_search_ctrl",
+  "Locust-Test-19": "pos_127_competition_clubs",
+  "Locust-Test-20": "pos_128_players_search_ctrl",
+  "db_migrate": ["python", "-c", "pass"]
+}
