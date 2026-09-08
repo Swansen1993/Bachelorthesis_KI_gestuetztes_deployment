@@ -16,8 +16,8 @@ def create_database_engine():
     if _engine is None:
         _engine = create_engine(
             DATABASE_URL,
-            pool_size=50,
-            max_overflow=20,
+            pool_size=15,
+            max_overflow=10,
             pool_pre_ping=True,
         )
     return _engine
