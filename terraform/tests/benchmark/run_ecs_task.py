@@ -25,7 +25,7 @@ DB_CLEAN_CMD = (
     "user=os.environ['POSTGRES_USER'], password=os.environ['POSTGRES_PASSWORD'], database=os.environ['POSTGRES_DB'])\n"
     "    rows = await c.fetch(\"SELECT tablename FROM pg_tables WHERE schemaname='public'\")\n"
     "    for r in rows:\n"
-    "        if r['tablename'] == 'alembic_version':\n"
+    "        if r['tablename'] == 'alembic_version' or r['tablename'] == 'django_migrations':\n"
     "            continue\n"
     "        await c.execute('TRUNCATE TABLE \"' + r['tablename'] + '\" RESTART IDENTITY CASCADE')\n"
     "    await c.close()\n"
