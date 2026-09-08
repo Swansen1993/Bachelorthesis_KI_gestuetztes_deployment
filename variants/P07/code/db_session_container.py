@@ -27,7 +27,6 @@ def connect_to_database():
     for retry_attempt in range(MAX_RETRIES):
         try:
             engine = create_database_engine()
-            Base.metadata.create_all(engine)
             SessionLocal = sessionmaker(
                 autocommit=False,
                 autoflush=False,
@@ -51,4 +50,5 @@ def get_db():
         db = connect_to_database()
         yield db
     finally:
-        db.close()
+        if db is not None:
+            db.close()
