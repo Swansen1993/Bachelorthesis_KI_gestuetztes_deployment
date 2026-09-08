@@ -11,6 +11,7 @@ terraform/secrets.auto.tfvars
 
 terraform/DEPLOYMENT_HANDBUCH.md
 /PROJEKTHANDBUCH.md
+/TODO.md
 /export_kpis/
 /variants/*/kpis.csv
 /variants/*/dataset.jsonl
