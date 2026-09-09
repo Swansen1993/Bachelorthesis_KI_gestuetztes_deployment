@@ -7,7 +7,7 @@ import pandas as pd
 ROOT = pathlib.Path(
     "/Users/svenniederlohner/projects/Bachelorthesis_KI_gestuetztes_deployment"
 )
-CSV_PATH = ROOT / "export_kpis" / "csv_kpis" / "all_projects_kpis_new.csv"
+CSV_DIR = ROOT / "export_kpis" / "csv_kpis"
 OUT_JSONL = ROOT / "export_kpis" / "dataset.jsonl"
 SNIPPET_DIRS = {
     ("train", "pos"): ROOT / "snippets_training_pos",
@@ -26,6 +26,15 @@ METRIC_FIELDS = [
 ]
 
 
+def latest_csv():
+    files = sorted(CSV_DIR.glob("all_projects_kpis_[0-9]*.csv"))
+    if not files:
+        raise FileNotFoundError(
+            f"Keine Zeitstempel-KPI-CSV in {CSV_DIR} gefunden - zuerst exportieren."
+        )
+    return files[-1]
+
+
 def index_snippets(folder):
     index = {}
     if not folder.exists():
@@ -42,7 +51,9 @@ def main():
     snippet_index = {
         split: index_snippets(folder) for split, folder in SNIPPET_DIRS.items()
     }
-    df = pd.read_csv(CSV_PATH)
+    csv_path = latest_csv()
+    df = pd.read_csv(csv_path)
+    print(f"Verwendete CSV: {csv_path}")
     df["pos"] = df["target_method"].str.extract(r"pos_(\d+)")
 
     lines = []

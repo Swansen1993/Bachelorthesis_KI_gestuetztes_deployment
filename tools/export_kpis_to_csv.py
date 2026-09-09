@@ -94,9 +94,12 @@ def main():
         df = df.sort_values(["variant", "target_method", "env"]).reset_index(drop=True)
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         out_csv = OUT_DIR / f"all_projects_kpis_{timestamp}.csv"
+        new_csv = OUT_DIR / "all_projects_kpis_new.csv"
         OUT_DIR.mkdir(parents=True, exist_ok=True)
         df.to_csv(out_csv, index=False)
+        df.to_csv(new_csv, index=False)
         print(f"CSV geschrieben: {out_csv}")
+        print(f"Referenz aktualisiert: {new_csv}")
         print(f"Zeilen: {len(df)}")
         print(df["variant"].value_counts().sort_index().to_string())
     finally:
