@@ -1,8 +1,8 @@
 name: Github Actions Pipeline
 on:
-  push:
-    branches:
-      - "test/P*"
+  #push:
+  # branches:
+  #  - "test/P*"
   workflow_dispatch:
     inputs:
       variant:
@@ -34,7 +34,6 @@ env:
   ECR_LOCUST_REPO: locust-repo
   VARIANT_ID: ${{ inputs.variant || 'P01' }}
   VARIANT_PATH: ${{ inputs.variant || 'P01' }}
-  NEGATIV_KAMPAGNE: "true"
   TF_VAR_db_username: ${{ secrets.DB_USERNAME }}
   TF_VAR_db_name: ${{ secrets.DB_NAME }}
   TF_VAR_jwt_secret_key: ${{ secrets.JWT_SECRET_KEY }}
@@ -98,18 +97,18 @@ jobs:
         id: login-ecr
       - name: KPI-Prefix festlegen (positiv/negativ)
         run: |-
-          if [ "${{ env.NEGATIV_KAMPAGNE }}" = "true" ]; then
+          CFG="variants/${VARIANT_ID}/run_config.json"
+          MODE="positiv"
+          if [ -f "$CFG" ]; then
+            MODE=$(python3 -c "import json;print(json.load(open('$CFG')).get('mode','positiv'))" 2>/dev/null || echo "positiv")
+          fi
+          if [ "$MODE" = "negativ" ]; then
             echo "KPI_PREFIX=${VARIANT_ID}_neg" >> "$GITHUB_ENV"
           else
             echo "KPI_PREFIX=${VARIANT_ID}" >> "$GITHUB_ENV"
           fi
-      - name: Alte KPIs dieser Variante loeschen (nur Positiv-Modus)
-        run: |-
-          if [ "${{ env.NEGATIV_KAMPAGNE }}" != "true" ]; then
-            aws s3 rm "s3://kpi-save-bucket-415221799955-eu-central-1-an/${KPI_PREFIX}/" --recursive
-          else
-            echo "Negativ-Modus: kein Loeschen - KPIs werden ueberschrieben (eine Methode je Mutation)"
-          fi
+      - name: Alte KPIs dieser Variante loeschen
+        run: aws s3 rm "s3://kpi-save-bucket-415221799955-eu-central-1-an/${KPI_PREFIX}/" --recursive
       - name: Setup-Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -152,9 +151,18 @@ jobs:
       - id: read
         name: Tests aus tests.json lesen
         run: |-
-          VARPATH="variants/${VARIANT_ID}/tests.json"
-          if [ ! -f "$VARPATH" ]; then VARPATH="terraform/tests/benchmark/tests.json"; fi
-          TESTS=$(python3 -c "import json,sys;print(json.dumps([k for k in json.load(open(sys.argv[1])) if k.startswith('Locust-Test')]))" "$VARPATH")
+          CFG="variants/${VARIANT_ID}/run_config.json"
+          TEST_FROM_CFG=""
+          if [ -f "$CFG" ]; then
+            TEST_FROM_CFG=$(python3 -c "import json;print(json.load(open('$CFG')).get('test',''))" 2>/dev/null || echo "")
+          fi
+          if [ -n "$TEST_FROM_CFG" ]; then
+            TESTS="[\"$TEST_FROM_CFG\"]"
+          else
+            VARPATH="variants/${VARIANT_ID}/tests.json"
+            if [ ! -f "$VARPATH" ]; then VARPATH="terraform/tests/benchmark/tests.json"; fi
+            TESTS=$(python3 -c "import json,sys;print(json.dumps([k for k in json.load(open(sys.argv[1])) if k.startswith('Locust-Test')]))" "$VARPATH")
+          fi
           echo "tests=${TESTS}" >> "$GITHUB_OUTPUT"
   Locust-Runner:
     runs-on: ubuntu-latest
@@ -188,7 +196,12 @@ jobs:
           path: /tmp/infra
       - name: KPI-Prefix festlegen (positiv/negativ)
         run: |-
-          if [ "${{ env.NEGATIV_KAMPAGNE }}" = "true" ]; then
+          CFG="variants/${VARIANT_ID}/run_config.json"
+          MODE="positiv"
+          if [ -f "$CFG" ]; then
+            MODE=$(python3 -c "import json;print(json.load(open('$CFG')).get('mode','positiv'))" 2>/dev/null || echo "positiv")
+          fi
+          if [ "$MODE" = "negativ" ]; then
             echo "KPI_PREFIX=${VARIANT_ID}_neg" >> "$GITHUB_ENV"
           else
             echo "KPI_PREFIX=${VARIANT_ID}" >> "$GITHUB_ENV"
@@ -220,7 +233,12 @@ jobs:
           role-to-assume: ${{env.ROLE_TO_ASSUME}}
       - name: KPI-Prefix festlegen (positiv/negativ)
         run: |-
-          if [ "${{ env.NEGATIV_KAMPAGNE }}" = "true" ]; then
+          CFG="variants/${VARIANT_ID}/run_config.json"
+          MODE="positiv"
+          if [ -f "$CFG" ]; then
+            MODE=$(python3 -c "import json;print(json.load(open('$CFG')).get('mode','positiv'))" 2>/dev/null || echo "positiv")
+          fi
+          if [ "$MODE" = "negativ" ]; then
             echo "KPI_PREFIX=${VARIANT_ID}_neg" >> "$GITHUB_ENV"
           else
             echo "KPI_PREFIX=${VARIANT_ID}" >> "$GITHUB_ENV"
@@ -255,11 +273,16 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.5.0
-      - name: Terraform Destroy (Aufraeumen nach Lauf)
-        working-directory: ./terraform
-        run: |-
-          terraform init -backend-config="key=${VARIANT_PATH}/state.tfstate"
-          terraform destroy -auto-approve -input=false \
-            -var="app_image_uri=dummy" \
-            -var="locust_image_uri=dummy" \
-            -var="variant_id=${VARIANT_ID}"
+      # Terraform Destroy ist waehrend der Negativ-Kampagne AUSKOMMENTIERT,
+      # damit die Infrastruktur zwischen den Mutanten-Laeufen stehen bleibt.
+      # Nach Abschluss der Kampagne wieder aktivieren (Kommentar entfernen).
+      # - name: Terraform Destroy (Aufraeumen nach Lauf)
+      #   working-directory: ./terraform
+      #   run: |-
+      #     terraform init -backend-config="key=${VARIANT_PATH}/state.tfstate"
+      #     terraform destroy -auto-approve -input=false \
+      #       -var="app_image_uri=dummy" \
+      #       -var="locust_image_uri=dummy" \
+      #       -var="variant_id=${VARIANT_ID}"
+      - name: Hinweis - Teardown deaktiviert (Negativ-Kampagne)
+        run: echo "Teardown deaktiviert - Infrastruktur bleibt fuer die naechste Mutation stehen"
