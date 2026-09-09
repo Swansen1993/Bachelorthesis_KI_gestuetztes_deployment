@@ -1,5 +1,5 @@
 {
-  "Locust-Test-2": "pos_002_get_list_by_filters",
+  "Locust-Test-3": "pos_008_post_create_new_article",
   "db_migrate": [
     "python",
     "-m",
