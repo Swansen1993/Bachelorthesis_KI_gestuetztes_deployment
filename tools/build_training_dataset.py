@@ -7,7 +7,7 @@ import pandas as pd
 ROOT = pathlib.Path(
     "/Users/svenniederlohner/projects/Bachelorthesis_KI_gestuetztes_deployment"
 )
-CSV_PATH = ROOT / "export_kpis" / "all_projects_kpis_new.csv"
+CSV_PATH = ROOT / "export_kpis" / "csv_kpis" / "all_projects_kpis_new.csv"
 OUT_JSONL = ROOT / "export_kpis" / "dataset.jsonl"
 SNIPPET_DIRS = {
     ("train", "pos"): ROOT / "snippets_training_pos",

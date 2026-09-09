@@ -1,3 +1,4 @@
+import datetime
 import json
 import os
 import pathlib
@@ -10,12 +11,12 @@ import pandas as pd
 BUCKET = "kpi-save-bucket-415221799955-eu-central-1-an"
 REGION = "eu-central-1"
 EXCLUDE_PREFIXES = ("v1/",)
-OUT_CSV = (
+OUT_DIR = (
     pathlib.Path(
         "/Users/svenniederlohner/projects/Bachelorthesis_KI_gestuetztes_deployment"
     )
     / "export_kpis"
-    / "all_projects_kpis_new.csv"
+    / "csv_kpis"
 )
 COLUMNS = [
     "variant",
@@ -91,9 +92,11 @@ def main():
         df = pd.DataFrame(rows, columns=COLUMNS)
         df["env"] = pd.Categorical(df["env"], categories=ENV_ORDER, ordered=True)
         df = df.sort_values(["variant", "target_method", "env"]).reset_index(drop=True)
-        OUT_CSV.parent.mkdir(parents=True, exist_ok=True)
-        df.to_csv(OUT_CSV, index=False)
-        print(f"CSV geschrieben: {OUT_CSV}")
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        out_csv = OUT_DIR / f"all_projects_kpis_{timestamp}.csv"
+        OUT_DIR.mkdir(parents=True, exist_ok=True)
+        df.to_csv(out_csv, index=False)
+        print(f"CSV geschrieben: {out_csv}")
         print(f"Zeilen: {len(df)}")
         print(df["variant"].value_counts().sort_index().to_string())
     finally:
