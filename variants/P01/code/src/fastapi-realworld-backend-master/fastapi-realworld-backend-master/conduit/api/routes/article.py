@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from starlette import status
+from types import SimpleNamespace
 
 from conduit.api.schemas.requests.article import (
     CreateArticleRequest,
