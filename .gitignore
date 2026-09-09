@@ -3,7 +3,9 @@ variants/P01/code/src/fastapi-realworld-backend-master/fastapi-realworld-backend
 
 .DS_Store
 **/.DS_Store
-
+*.tfstate
+*.tfstate.backup
+**/.env
 
 terraform/secrets.tfvars
 terraform/secrets.auto.tfvars
