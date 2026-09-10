@@ -8,6 +8,7 @@ import json
 
 ACTIVE_TARGET = os.getenv("TARGET_METHOD", "pos_046_list_articles")
 SEED_ARTICLES = int(os.getenv("SEED_ARTICLES", "20"))
+SEED_COMMENTS = int(os.getenv("SEED_COMMENTS", "20"))
 
 
 def _cpu_sampler_loop():
@@ -69,6 +70,14 @@ class Projekt06Tests(HttpUser):
             return res.json().get("article", {}).get("slug")
         return None
 
+    def _create_comment(self, headers, slug, index):
+        self.client.post(
+            f"/api/articles/{slug}/comments",
+            json={"comment": {"body": f"Seed comment {index}"}},
+            headers=headers,
+            name="/api/articles/:slug/comments [POST seed comment]",
+        )
+
     def _seed_feed_target(self):
         author_name = f"author_{uuid.uuid4().hex[:8]}"
         author_email = f"{author_name}@test.com"
@@ -110,6 +119,9 @@ class Projekt06Tests(HttpUser):
                 slug = self._create_article(self.headers, f"Seed Article {index}")
                 if slug and not self.article_slug:
                     self.article_slug = slug
+            for index in range(SEED_COMMENTS):
+                if self.article_slug:
+                    self._create_comment(self.headers, self.article_slug, index)
 
     @task(1 if ACTIVE_TARGET == "pos_046_list_articles" else 0)
     def pos_046_list_articles_test(self):
@@ -173,11 +185,10 @@ class Projekt06Tests(HttpUser):
     def pos_052_create_comment_test(self):
         if not self.token or not self.article_slug:
             return
-        self.client.post(
+        self.client.get(
             f"/api/articles/{self.article_slug}/comments",
-            json={"comment": {"body": f"benchmark comment {uuid.uuid4().hex[:8]}"}},
             headers=self.headers,
-            name="/api/articles/:slug/comments [POST]",
+            name="/api/articles/:slug/comments [GET list]",
         )
 
 
