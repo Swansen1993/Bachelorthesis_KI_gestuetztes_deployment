@@ -1,4 +1,4 @@
 {
-  "Locust-Test-1": "pos_052_create_comment",
+  "Locust-Test-1": "pos_046_list_articles",
   "db_migrate": ["python", "manage.py", "migrate"]
 }
