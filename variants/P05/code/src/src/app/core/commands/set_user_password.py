@@ -74,10 +74,6 @@ class SetUserPassword:
                 target=user,
             ),
         )
-        _ = await self._user_tx_storage.get_by_id(
-            user_id,
-            for_update=True,
-        )
         await self._user_service.change_password(
             user,
             password,
