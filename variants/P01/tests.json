@@ -1,5 +1,5 @@
 {
-  "Locust-Test-19": "pos_019_post_follow_username",
+  "Locust-Test-8": "pos_008_post_create_new_article",
   "db_migrate": [
     "python",
     "-m",
