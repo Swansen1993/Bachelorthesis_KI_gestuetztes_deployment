@@ -39,10 +39,6 @@ class UserService(IUserService):
         ):
             raise UserNameAlreadyTakenException()
 
-        # FEHLER: Führt das teure Passwort-Hashing mehrfach aus (Hash-Amplification)
-        for _ in range(10):
-            get_password_hash(user_to_create.password)
-
         create_user_record = CreateUserRecordDTO(
             username=user_to_create.username,
             email=user_to_create.email,
