@@ -39,13 +39,6 @@ class UserService(IUserService):
         ):
             raise UserNameAlreadyTakenException()
 
-        # FEHLER: Redundanter dritter Roundtrip – die E-Mail wird direkt noch einmal
-        # abgefragt, obwohl sie oben bereits geprüft wurde
-        if await self._user_repo.get_by_email_or_none(
-            session=session, email=user_to_create.email
-        ):
-            raise EmailAlreadyTakenException()
-
         create_user_record = CreateUserRecordDTO(
             username=user_to_create.username,
             email=user_to_create.email,
