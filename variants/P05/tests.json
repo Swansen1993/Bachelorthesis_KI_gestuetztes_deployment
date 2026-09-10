@@ -1,5 +1,5 @@
 {
-  "Locust-Test-1": "pos_035_list_users",
+  "Locust-Test-1": "pos_041_set_user_password",
   "db_migrate": ["python", "-m", "alembic", "-c", "alembic.ini", "upgrade", "head"],
   "db_seed": ["python", "/app/seed/seed_bench_dataset.py"]
 }
