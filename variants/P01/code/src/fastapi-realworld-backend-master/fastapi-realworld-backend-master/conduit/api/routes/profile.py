@@ -1,5 +1,3 @@
-import time
-
 from fastapi import APIRouter
 
 from conduit.api.schemas.responses.profile import ProfileResponse
@@ -39,9 +37,6 @@ async def follow_username(
     """
     Follow profile with specific username.
     """
-    # FEHLER: Blockierender synchroner Call im Event-Loop
-    time.sleep(0.3)
-
     await profile_service.follow_user(
         session=session, username=username, current_user=current_user
     )
