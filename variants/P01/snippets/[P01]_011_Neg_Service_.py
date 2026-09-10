@@ -12,14 +12,21 @@ from conduit.services.password import get_password_hash
 async def create_user(
     self, session: AsyncSession, user_to_create: CreateUserDTO
 ) -> UserDTO:
-    # FEHLER: Drei getrennte Roundtrips statt kombinierter Abfrage
-    if await self._user_repo.get_by_email_or_none(session=session, email=user_to_create.email):
+    if await self._user_repo.get_by_email_or_none(
+        session=session, email=user_to_create.email
+    ):
         raise EmailAlreadyTakenException()
 
-    if await self._user_repo.get_by_username_or_none(session=session, username=user_to_create.username):
+    if await self._user_repo.get_by_username_or_none(
+        session=session, username=user_to_create.username
+    ):
         raise UserNameAlreadyTakenException()
 
-    if await self._user_repo.check_exists(session=session, email=user_to_create.email):
+    # FEHLER: Redundanter dritter Roundtrip – die E-Mail wird direkt noch einmal
+    # abgefragt, obwohl sie oben bereits geprüft wurde
+    if await self._user_repo.get_by_email_or_none(
+        session=session, email=user_to_create.email
+    ):
         raise EmailAlreadyTakenException()
 
     create_user_record = CreateUserRecordDTO(
