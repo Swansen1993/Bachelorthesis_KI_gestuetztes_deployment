@@ -1,5 +1,3 @@
-import asyncio
-
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
@@ -17,8 +15,6 @@ from conduit.interfaces.services.profile import IProfileService
 from conduit.interfaces.services.user import IUserService
 
 logger = get_logger()
-
-_follow_lock = asyncio.Lock()
 
 
 class ProfileService(IProfileService):
@@ -94,23 +90,17 @@ class ProfileService(IProfileService):
         if username == current_user.username:
             raise OwnProfileFollowingException()
 
-        # FEHLER: Zu grobes Lock mit unnötiger Haltezeit serialisiert alle
-        # Follows (Lock-Granularitaet / Contention)
-        async with _follow_lock:
-            await asyncio.sleep(0.02)
-            target_user = await self._user_service.get_user_by_username(
-                session=session, username=username
-            )
-            if await self._follower_repo.exists(
-                session, follower_id=current_user.id, following_id=target_user.id
-            ):
-                raise ProfileAlreadyFollowedException()
+        target_user = await self._user_service.get_user_by_username(
+            session=session, username=username
+        )
+        if await self._follower_repo.exists(
+            session, follower_id=current_user.id, following_id=target_user.id
+        ):
+            raise ProfileAlreadyFollowedException()
 
-            await self._follower_repo.create(
-                session=session,
-                follower_id=current_user.id,
-                following_id=target_user.id,
-            )
+        await self._follower_repo.create(
+            session=session, follower_id=current_user.id, following_id=target_user.id
+        )
 
     async def unfollow_user(
         self, session: AsyncSession, username: str, current_user: UserDTO
