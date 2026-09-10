@@ -92,7 +92,7 @@ async def main() -> None:
                     rows.append(
                         {
                             "id": uuid.uuid4(),
-                            "username": f"bench_user_{uuid.uuid4().hex[:16]}",
+                            "username": f"bench_user_{total + created:05d}",
                             "password_hash": password_hash,
                             "role": UserRole.USER,
                             "is_active": True,
