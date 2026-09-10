@@ -15,6 +15,7 @@ terraform/DEPLOYMENT_HANDBUCH.md
 /PROJEKTHANDBUCH.md
 /PROJEKTSTAND.md
 /ml/QUELLEN.md
+/ml/quellen2.md
 /export_kpis/
 /variants/*/kpis.csv
 /variants/*/dataset.jsonl
