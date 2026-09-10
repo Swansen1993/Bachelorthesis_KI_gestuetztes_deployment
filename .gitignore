@@ -11,7 +11,10 @@ __pycache__/
 
 terraform/secrets.tfvars
 terraform/secrets.auto.tfvars
-*.tfvars.local
+*PROJEKTSTAND.md
+/ml/QUELLEN.md
+/ml/quellen2.md
+/.tfvars.local
 
 terraform/DEPLOYMENT_HANDBUCH.md
 /PROJEKTHANDBUCH.md
