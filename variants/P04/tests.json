@@ -1,4 +1,4 @@
 {
-  "Locust-Test-1": "pos_029_create_user",
+  "Locust-Test-1": "pos_032_login",
   "db_migrate": ["python", "-c", "from app.db import create_tables; create_tables()"]
 }
