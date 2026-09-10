@@ -228,7 +228,7 @@ jobs:
           if [ "${{ env.NEGATIV_KAMPAGNE }}" = "true" ]; then
             echo "KPI_PREFIX=${VARIANT_ID}_neg" >> "$GITHUB_ENV"
           else
-            echo "KPI_PREFIX=${VARIANT_ID}" >> "$GITHUB_ENV"
+            echo  "KPI_PREFIX=${VARIANT_ID}" >> "$GITHUB_ENV"
           fi
       - name: KPI-Export (CSV + JSONL)
         run: python3 tools/export_training_data.py --variant $KPI_PREFIX --out variants/$VARIANT_PATH
