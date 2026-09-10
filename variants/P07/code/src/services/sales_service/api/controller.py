@@ -27,6 +27,8 @@ def create_product_sale_transaction(sale: Sales, db: Session):
     """
     try:
         db_sale = Sales(**sale.dict())
+        db.add(db_sale)
+        db.flush()
 
         print("payload received for sale: ", vars(db_sale))
         product_service_response = get_product_details_by_id(db_sale.product_id)
@@ -57,7 +59,6 @@ def create_product_sale_transaction(sale: Sales, db: Session):
                     product_service_response["price"] * db_sale.units_sold
                 )
                 db_sale.revenue = db_sale.total_price
-                db.add(db_sale)
                 db.commit()
                 db.refresh(db_sale)
                 return db_sale
@@ -295,9 +296,7 @@ def fetch_sales(
         else:
             # Group by product_id and category
             sales_query = sales_query.group_by(
-                Sales.product_id,
-                Sales.category_name,
-                Sales.sold_at
+                Sales.product_id, Sales.category_name, Sales.sold_at
             )
         print("sales query statement \n\n\n", sales_query.statement, "\n\n\n\n")
         result = sales_query.all()

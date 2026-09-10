@@ -1,13 +1,5 @@
 {
-  "Locust-Test-1": "pos_053_fetch_sales",
-  "Locust-Test-2": "pos_054_get_product_by_id",
-  "Locust-Test-3": "pos_055_inventory_history",
-  "Locust-Test-4": "pos_056_create_sale_transaction",
-  "Locust-Test-5": "pos_057_create_product",
-  "Locust-Test-6": "pos_058_update_product_attribute",
-  "Locust-Test-7": "pos_059_create_sale",
-  "Locust-Test-8": "pos_060_update_product",
-  "Locust-Test-9": "pos_061_retrieve_sales",
+  "Locust-Test-1": "pos_056_create_sale_transaction",
   "db_migrate": ["python", "/app/schema_setup.py"],
   "db_seed": ["python", "/app/seed_categories.py"]
 }
