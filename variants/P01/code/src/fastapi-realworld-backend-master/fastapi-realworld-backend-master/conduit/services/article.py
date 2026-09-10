@@ -1,5 +1,3 @@
-import asyncio
-
 from sqlalchemy.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,8 +23,6 @@ from conduit.interfaces.repositories.favorite import IFavoriteRepository
 from conduit.interfaces.services.article import IArticleService
 from conduit.interfaces.services.profile import IProfileService
 
-_create_article_lock = asyncio.Lock()
-
 
 class ArticleService(IArticleService):
     """Service to handle articles logic."""
@@ -46,11 +42,6 @@ class ArticleService(IArticleService):
     async def create_new_article(
         self, session: AsyncSession, author_id: int, article_to_create: CreateArticleDTO
     ) -> ArticleDTO:
-        # FEHLER: Globales Lock mit langer Haltezeit serialisiert alle parallelen
-        # Requests (Lock-Contention / Serialisierung)
-        async with _create_article_lock:
-            await asyncio.sleep(0.1)
-
         try:
             article = await self._article_repo.add(
                 session=session, author_id=author_id, create_item=article_to_create
