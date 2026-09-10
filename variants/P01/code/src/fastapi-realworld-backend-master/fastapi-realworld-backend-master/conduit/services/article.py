@@ -48,22 +48,6 @@ class ArticleService(IArticleService):
             )
         except (NoResultFound, MultipleResultsFound) as exc:
             raise ArticleCreateException() from exc
-
-        # FEHLER: Holt den gerade erst angelegten Artikel erneut aus der Datenbank,
-        # statt das von add() zurückgegebene Objekt weiterzuverwenden
-        article = await self._article_repo.get_by_slug(
-            session=session, slug=article.slug
-        )
-
-        # FEHLER: Fragt Favoriten-Status und -Anzahl fuer den frisch erstellten
-        # Artikel ab, obwohl dieser noch gar keine Favoriten haben kann
-        favorited = await self._favorite_repo.exists(
-            session=session, author_id=author_id, article_id=article.id
-        )
-        favorites_count = await self._favorite_repo.count(
-            session=session, article_id=article.id
-        )
-
         profile = await self._profile_service.get_profile_by_user_id(
             session=session, user_id=author_id
         )
@@ -81,8 +65,8 @@ class ArticleService(IArticleService):
             record=article,
             author=author,
             tags=article_to_create.tags,
-            favorited=favorited,
-            favorites_count=favorites_count,
+            favorited=False,
+            favorites_count=0,
         )
 
     async def get_article_by_slug(
