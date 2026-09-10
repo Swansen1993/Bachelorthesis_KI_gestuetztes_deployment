@@ -7,6 +7,7 @@ import boto3
 import json
 
 ACTIVE_TARGET = os.getenv("TARGET_METHOD", "pos_046_list_articles")
+SEED_ARTICLES = int(os.getenv("SEED_ARTICLES", "20"))
 
 
 def _cpu_sampler_loop():
@@ -105,7 +106,10 @@ class Projekt06Tests(HttpUser):
             "pos_049_unfavorite_article",
             "pos_052_create_comment",
         ):
-            self.article_slug = self._create_article(self.headers, "Seed Article") or ""
+            for index in range(SEED_ARTICLES):
+                slug = self._create_article(self.headers, f"Seed Article {index}")
+                if slug and not self.article_slug:
+                    self.article_slug = slug
 
     @task(1 if ACTIVE_TARGET == "pos_046_list_articles" else 0)
     def pos_046_list_articles_test(self):

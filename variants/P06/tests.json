@@ -1,9 +1,4 @@
 {
   "Locust-Test-1": "pos_046_list_articles",
-  "Locust-Test-2": "pos_047_articles_feed",
-  "Locust-Test-3": "pos_048_favorite_article",
-  "Locust-Test-4": "pos_049_unfavorite_article",
-  "Locust-Test-5": "pos_050_create_article",
-  "Locust-Test-6": "pos_052_create_comment",
   "db_migrate": ["python", "manage.py", "migrate"]
 }

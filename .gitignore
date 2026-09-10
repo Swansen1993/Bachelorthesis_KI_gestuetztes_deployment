@@ -20,3 +20,7 @@ terraform/DEPLOYMENT_HANDBUCH.md
 # Variante-A-Vorlagen (lokal, nicht versionieren)
 /VARIANTE_A_TEMPLATE.md
 /project.yaml.example
+
+# Doku-Dateien (branch-unabhaengig, nicht versionieren)
+/PROJEKTSTAND.md
+/ml/quellen2.md
