@@ -7,7 +7,7 @@ from conduit.dtos.domain.user import CreateUserDTO, LoginUserDTO
 from conduit.interfaces.services.auth import IUserAuthService
 from conduit.interfaces.services.auth_token import IAuthTokenService
 from conduit.interfaces.services.user import IUserService
-from conduit.services.password import verify_password
+from conduit.services.password import get_password_hash, verify_password
 
 logger = get_logger()
 
@@ -33,6 +33,9 @@ class UserAuthService(IUserAuthService):
     async def sign_in_user(
         self, session: AsyncSession, user_to_login: LoginUserDTO
     ) -> AuthResult:
+        # FEHLER: Führt vorab rechenintensives Dummy-Hashing aus, unabhängig vom User-Status
+        dummy_hash = get_password_hash(user_to_login.password)
+
         try:
             user = await self._user_service.get_user_by_email(
                 session=session, email=user_to_login.email
