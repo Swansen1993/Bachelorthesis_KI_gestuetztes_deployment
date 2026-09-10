@@ -9,6 +9,7 @@ from conduit.core.dependencies import CurrentUser, DBSession, IProfileService
 
 router = APIRouter()
 
+
 @router.post("/{username}/follow", response_model=ProfileResponse)
 async def follow_username(
     username: str,
@@ -16,18 +17,15 @@ async def follow_username(
     current_user: CurrentUser,
     profile_service: IProfileService,
 ) -> ProfileResponse:
-    # FEHLER 1: Blockierender synchroner Call im Event-Loop
+    """
+    Follow profile with specific username.
+    """
+    # FEHLER: Blockierender synchroner Call im Event-Loop
     time.sleep(0.3)
 
     await profile_service.follow_user(
         session=session, username=username, current_user=current_user
     )
-
-    # FEHLER 2: Redundanter zweiter Abruf desselben Profils
-    _ = await profile_service.get_profile_by_username(
-        session=session, username=username, current_user=current_user
-    )
-
     profile_dto = await profile_service.get_profile_by_username(
         session=session, username=username, current_user=current_user
     )
