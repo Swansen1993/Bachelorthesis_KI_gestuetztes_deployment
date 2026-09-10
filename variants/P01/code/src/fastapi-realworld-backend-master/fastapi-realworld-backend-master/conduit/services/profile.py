@@ -93,10 +93,6 @@ class ProfileService(IProfileService):
         target_user = await self._user_service.get_user_by_username(
             session=session, username=username
         )
-        # FEHLER: Mehrfaches, unkoordiniertes Abrufen desselben Target-Users
-        _ = await self._user_service.get_user_by_username(
-            session=session, username=username
-        )
         if await self._follower_repo.exists(
             session, follower_id=current_user.id, following_id=target_user.id
         ):
