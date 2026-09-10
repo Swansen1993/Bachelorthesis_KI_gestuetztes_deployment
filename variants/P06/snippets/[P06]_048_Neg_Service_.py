@@ -11,6 +11,7 @@ from .models import Article
 from .renderers import ArticleJSONRenderer
 from .serializers import ArticleSerializer
 
+
 class ArticlesFavoriteAPIView(APIView):
     permission_classes = (IsAuthenticated,)
     renderer_classes = (ArticleJSONRenderer,)
@@ -18,16 +19,16 @@ class ArticlesFavoriteAPIView(APIView):
 
     def post(self, request, article_slug=None):
         profile = self.request.user.profile
-        serializer_context = {'request': request}
+        serializer_context = {"request": request}
 
-        try:
-            # FEHLER: Unoptimierter Abruf ohne Prefetching; erzwingt N+1 beim Serialisieren aller Relationen
-            article = Article.objects.all().get(slug=article_slug)
-        except Article.DoesNotExist:
-            raise NotFound('An article with this slug was not found.')
+        # FEHLER: In-Memory-Scan - laedt ALLE Artikel und filtert in Python statt per Query
+        all_articles = list(Article.objects.all())
+        matching = [a for a in all_articles if a.slug == article_slug]
+        if not matching:
+            raise NotFound("An article with this slug was not found.")
+        article = matching[0]
 
         profile.favorite(article)
 
-        # FEHLER: Lädt alle Kommentare und Relationen redundant in den Serializer-Kontext
         serializer = self.serializer_class(article, context=serializer_context)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
