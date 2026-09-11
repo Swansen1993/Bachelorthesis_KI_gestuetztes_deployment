@@ -201,14 +201,16 @@ def create_order_from_cart_for_user(db: Session, user_id: int) -> models.Order:
 
     total = 0
     for item in cart_items:
+        product = db.query(models.Product).filter(models.Product.id == item.product_id).first()
         order_item = models.OrderItem(
             order_id=order.id,
             product_id=item.product_id,
             quantity=item.quantity,
-            price=item.product.price
+            price=product.price
         )
         db.add(order_item)
-        total += item.quantity * item.product.price
+        db.commit()
+        total += item.quantity * product.price
 
     order.total_amount = total
     db.commit()
