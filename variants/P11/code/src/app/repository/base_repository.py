@@ -13,7 +13,11 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class BaseRepository:
-    def __init__(self, session_factory: Callable[..., AbstractContextManager[Session]], model: Type[T]) -> None:
+    def __init__(
+        self,
+        session_factory: Callable[..., AbstractContextManager[Session]],
+        model: Type[T],
+    ) -> None:
         self.session_factory = session_factory
         self.model = model
 
@@ -28,7 +32,9 @@ class BaseRepository:
             )
             page = schema_as_dict.get("page", configs.PAGE)
             page_size = schema_as_dict.get("page_size", configs.PAGE_SIZE)
-            filter_options = dict_to_sqlalchemy_filter_options(self.model, schema.dict(exclude_none=True))
+            filter_options = dict_to_sqlalchemy_filter_options(
+                self.model, schema.dict(exclude_none=True)
+            )
             query = session.query(self.model)
             if eager:
                 for eager in getattr(self.model, "eagers", []):
@@ -38,7 +44,8 @@ class BaseRepository:
             if page_size == "all":
                 query = query.all()
             else:
-                query = query.limit(page_size).offset((page - 1) * page_size).all()
+                all_rows = query.all()
+                query = all_rows[(page - 1) * page_size : page * page_size]
             total_count = filtered_query.count()
             return {
                 "founds": query,
@@ -74,13 +81,17 @@ class BaseRepository:
 
     def update(self, id: int, schema: T):
         with self.session_factory() as session:
-            session.query(self.model).filter(self.model.id == id).update(schema.dict(exclude_none=True))
+            session.query(self.model).filter(self.model.id == id).update(
+                schema.dict(exclude_none=True)
+            )
             session.commit()
             return self.read_by_id(id)
 
     def update_attr(self, id: int, column: str, value: Any):
         with self.session_factory() as session:
-            session.query(self.model).filter(self.model.id == id).update({column: value})
+            session.query(self.model).filter(self.model.id == id).update(
+                {column: value}
+            )
             session.commit()
             return self.read_by_id(id)
 
