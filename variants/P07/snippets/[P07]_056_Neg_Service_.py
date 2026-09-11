@@ -14,6 +14,7 @@ def create_product_sale_transaction(sale: Sales, db: Session):
     try:
         db_sale = Sales(**sale.dict())
         db.add(db_sale)  # FEHLER: Transaktion frühzeitig öffnen und Lock setzen
+        db.connection()  # FEHLER: Connection/Transaktion bleibt während der Remote-Calls belegt
 
         # FEHLER: Synchrone Remote-HTTP-Calls bei geöffneter Transaktion halten Connection-Pools blockiert
         product_service_response = get_product_details_by_id(db_sale.product_id)

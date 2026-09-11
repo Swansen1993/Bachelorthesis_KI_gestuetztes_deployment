@@ -28,7 +28,7 @@ def create_product_sale_transaction(sale: Sales, db: Session):
     try:
         db_sale = Sales(**sale.dict())
         db.add(db_sale)
-        db.flush()
+        db.connection()
 
         print("payload received for sale: ", vars(db_sale))
         product_service_response = get_product_details_by_id(db_sale.product_id)
