@@ -18,16 +18,9 @@ class AuthService(BaseService):
         super().__init__(user_repository)
 
     def sign_in(self, sign_in_info: SignIn):
-        _ = get_password_hash(sign_in_info.password)
-
         find_user = FindUser()
         find_user.email__eq = sign_in_info.email__eq
         user: List[User] = self.user_repository.read_by_options(find_user)["founds"]
-
-        redundant_lookup = FindUser()
-        redundant_lookup.email__eq = sign_in_info.email__eq
-        _ = self.user_repository.read_by_options(redundant_lookup)
-
         if len(user) < 1:
             raise AuthError(detail="Incorrect email or password")
         found_user = user[0]
@@ -43,9 +36,7 @@ class AuthService(BaseService):
             is_superuser=found_user.is_superuser,
         )
         token_lifespan = timedelta(minutes=configs.ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token, expiration_datetime = create_access_token(
-            payload.dict(), token_lifespan
-        )
+        access_token, expiration_datetime = create_access_token(payload.dict(), token_lifespan)
         sign_in_result = {
             "access_token": access_token,
             "expiration": expiration_datetime,
@@ -55,12 +46,7 @@ class AuthService(BaseService):
 
     def sign_up(self, user_info: SignUp):
         user_token = get_rand_hash()
-        user = User(
-            **user_info.dict(exclude_none=True),
-            is_active=True,
-            is_superuser=False,
-            user_token=user_token
-        )
+        user = User(**user_info.dict(exclude_none=True), is_active=True, is_superuser=False, user_token=user_token)
         user.password = get_password_hash(user_info.password)
         created_user = self.user_repository.create(user)
         delattr(created_user, "password")

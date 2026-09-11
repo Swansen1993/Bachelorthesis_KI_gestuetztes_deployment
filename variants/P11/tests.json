@@ -1,4 +1,5 @@
 {
-  "Locust-Test-1": "pos_088_sign_in",
-  "db_migrate": ["alembic", "upgrade", "head"]
+  "Locust-Test-1": "pos_086_post_list",
+  "db_migrate": ["alembic", "upgrade", "head"],
+  "db_seed": ["python", "/app/src/seed/seed_bench_posts.py"]
 }
