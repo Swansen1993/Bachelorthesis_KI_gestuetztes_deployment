@@ -24,3 +24,7 @@ terraform/DEPLOYMENT_HANDBUCH.md
 # Doku-Dateien (branch-unabhaengig, nicht versionieren)
 /PROJEKTSTAND.md
 /ml/quellen2.md
+
+# Python-Caches (nicht versionieren)
+__pycache__/
+*.pyc
