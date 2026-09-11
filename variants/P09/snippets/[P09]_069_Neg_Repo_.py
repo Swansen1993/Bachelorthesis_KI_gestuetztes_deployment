@@ -23,17 +23,23 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return db_obj
 
     async def get(self, session: AsyncSession, *args, **kwargs) -> Optional[ModelType]:
-        result = await session.execute(
-            select(self._model).filter(*args).filter_by(**kwargs)
-        )
-        return result.scalars().first()
+        # FEHLER (Excessive Data): laedt die vollstaendige Tabelle und filtert in Python
+        result = await session.execute(select(self._model))
+        for row in result.scalars().all():
+            if all(getattr(row, k) == v for k, v in kwargs.items()):
+                return row
+        return None
 
     # FEHLER (Excessive Data): Ignoriert Pagination; lädt immer die vollständige Tabelle
     async def get_multi(
         self, session: AsyncSession, *args, offset: int = 0, limit: int = 100, **kwargs
     ) -> List[ModelType]:
         result = await session.execute(
-            select(self._model).filter(*args).filter_by(**kwargs)
+            select(self._model)
+            .filter(*args)
+            .filter_by(**kwargs)
+            .offset(offset)
+            .limit(limit)
         )
         return result.scalars().all()
 
