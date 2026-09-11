@@ -44,8 +44,7 @@ class BaseRepository:
             if page_size == "all":
                 query = query.all()
             else:
-                all_rows = query.all()
-                query = all_rows[(page - 1) * page_size : page * page_size]
+                query = query.limit(page_size).offset((page - 1) * page_size).all()
             total_count = filtered_query.count()
             return {
                 "founds": query,
