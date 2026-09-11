@@ -11,6 +11,8 @@ terraform/secrets.auto.tfvars
 
 terraform/DEPLOYMENT_HANDBUCH.md
 /PROJEKTHANDBUCH.md
+/TODO.md
+/ml/QUELLEN.md
 /export_kpis/
 /variants/*/kpis.csv
 /variants/*/dataset.jsonl
@@ -18,3 +20,7 @@ terraform/DEPLOYMENT_HANDBUCH.md
 # Variante-A-Vorlagen (lokal, nicht versionieren)
 /VARIANTE_A_TEMPLATE.md
 /project.yaml.example
+
+# Doku-Dateien (branch-unabhaengig, nicht versionieren)
+/PROJEKTSTAND.md
+/ml/quellen2.md
