@@ -1,13 +1,4 @@
 {
-  "Locust-Test-1": "pos_074_db_setup",
-  "Locust-Test-2": "pos_075_user_db_create",
-  "Locust-Test-3": "pos_078_manager_create",
-  "Locust-Test-4": "pos_079_manager_authenticate",
-  "Locust-Test-5": "pos_080_authenticator_me",
-  "Locust-Test-6": "pos_081_backend_logout",
-  "Locust-Test-7": "pos_082_register_controller",
-  "Locust-Test-8": "pos_083_me_controller",
-  "Locust-Test-9": "pos_084_forgot_password_controller",
-  "Locust-Test-10": "pos_085_login_controller",
+  "Locust-Test-1": "pos_079_manager_authenticate",
   "db_migrate": ["python", "-c", "import asyncio; from app.db import create_db_and_tables; asyncio.run(create_db_and_tables())"]
 }

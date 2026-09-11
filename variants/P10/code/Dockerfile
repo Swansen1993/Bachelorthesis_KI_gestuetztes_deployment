@@ -6,6 +6,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ ./src/
+
+ENV PYTHONPATH=/app/src
+
 COPY overlay/app/db.py /app/src/examples/sqlalchemy/app/db.py
 COPY overlay/app/users.py /app/src/examples/sqlalchemy/app/users.py
 
