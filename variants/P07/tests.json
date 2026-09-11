@@ -1,5 +1,5 @@
 {
-  "Locust-Test-1": "pos_056_create_sale_transaction",
+  "Locust-Test-1": "pos_058_update_product_attribute",
   "db_migrate": ["python", "/app/schema_setup.py"],
   "db_seed": ["python", "/app/seed_categories.py"]
 }
