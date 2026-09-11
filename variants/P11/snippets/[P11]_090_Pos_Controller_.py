@@ -1,16 +1,26 @@
 # Project: P11_fastapi-clean-architecture
 # Layer: Controller / HTTP
 # Source: app/api/v1/endpoints/user.py
+# Hinweis: realer Endpunkt create_user (POST /api/v1/user -> UserService.add)
 
-from fastapi import APIRouter, Depends, status
+from dependency_injector.wiring import Provide
+from fastapi import APIRouter, Depends
+
+from app.core.container import Container
+from app.core.dependencies import get_current_super_user
+from app.core.middleware import inject
+from app.model.user import User
+from app.schema.user_schema import UpsertUser
 from app.services.user_service import UserService
-from app.schema.user_schema import UserSchema, UserCreateSchema
 
-router = APIRouter()
+router = APIRouter(prefix="/user", tags=["user"])
 
-@router.post("", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
-async def create_user(
-    user_in: UserCreateSchema,
-    user_service: UserService = Depends()
+
+@router.post("", response_model=User)
+@inject
+def create_user(
+    user: UpsertUser,
+    service: UserService = Depends(Provide[Container.user_service]),
+    current_user: User = Depends(get_current_super_user),
 ):
-    return await user_service.create_user(user_in)
+    return service.add(user)

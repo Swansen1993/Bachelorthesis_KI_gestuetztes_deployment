@@ -1,15 +1,18 @@
 # Project: P11_fastapi-clean-architecture
 # Layer: Business Logic (Service)
 # Source: app/services/base_service.py
+# Hinweis: realer Pfad fuer pos_089_post_by_id (GET /api/v1/post/{id} -> get_post -> get_by_id -> read_by_id)
 
-from typing import Generic, TypeVar
-from app.repository.base_repository import BaseRepository
+from typing import Any, Protocol
 
-T = TypeVar("T")
 
-class BaseService(Generic[T]):
-    def __init__(self, repository: BaseRepository):
-        self.repository = repository
+class RepositoryProtocol(Protocol):
+    def read_by_id(self, id: int) -> Any: ...
 
-    async def get_by_id(self, id: int):
-        return await self.repository.get_by_id(id)
+
+class BaseService:
+    def __init__(self, repository: RepositoryProtocol) -> None:
+        self._repository = repository
+
+    def get_by_id(self, id: int) -> Any:
+        return self._repository.read_by_id(id)

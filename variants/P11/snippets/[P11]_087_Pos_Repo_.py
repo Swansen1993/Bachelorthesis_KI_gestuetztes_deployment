@@ -1,13 +1,23 @@
 # Project: P11_fastapi-clean-architecture
 # Layer: Database Query (Repository)
-# Source: app/repository/tag_repository.py
+# Source: app/repository/base_repository.py
+# Hinweis: realer Pfad fuer pos_087_tag_create (POST /api/v1/tag -> create_tag -> TagService.add -> create)
 
-from sqlalchemy.future import select
-from app.repository.base_repository import BaseRepository
-from app.model.tag import Tag
+from typing import TypeVar
 
-class TagRepository(BaseRepository):
-    async def get_by_name(self, name: str):
-        query = select(Tag).where(Tag.name == name)
-        result = await self.db.execute(query)
-        return result.scalars().first()
+from app.model.base_model import BaseModel
+
+T = TypeVar("T", bound=BaseModel)
+
+
+class BaseRepository:
+    def create(self, schema: T):
+        with self.session_factory() as session:
+            query = self.model(**schema.dict())
+            try:
+                session.add(query)
+                session.commit()
+                session.refresh(query)
+            except IntegrityError as e:
+                raise DuplicatedError(detail=str(e.orig))
+            return query
