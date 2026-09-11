@@ -58,8 +58,9 @@ def update_product_attribute(product_id: int, updated_attributes: dict, db: Sess
             for key, value in updated_attributes.items():
                 if hasattr(db_product, key):
                     setattr(db_product, key, value)
-                    db.commit()
-                    db.refresh(db_product)
+            db.commit()
+            # Refresh the db_product to get the updated values
+            db.refresh(db_product)
             if "current_inventory" in updated_attributes:
                 # The "current_inventory" key exists in the dictionary
                 inventory_data = InventoryCreate(
@@ -68,8 +69,7 @@ def update_product_attribute(product_id: int, updated_attributes: dict, db: Sess
                     inventory_quantity=updated_attributes["current_inventory"],
                 )
                 create_inventory(inventory_data, db)
-                db.commit()
-                db.refresh(db_product)
+            db.refresh(db_product)
             print("db: ", vars(db_product))
             return {
                 "success": True,
