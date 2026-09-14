@@ -9,11 +9,12 @@ ROOT = pathlib.Path(
 )
 CSV_DIR = ROOT / "export_kpis" / "csv_kpis"
 OUT_JSONL = ROOT / "export_kpis" / "dataset.jsonl"
+SAMMLUNG = ROOT / "variants" / "P11" / "snippets_alle"
 SNIPPET_DIRS = {
-    ("train", "pos"): ROOT / "snippets_training_pos",
-    ("train", "neg"): ROOT / "snippets_training_neg",
-    ("eval", "pos"): ROOT / "snippets_evaluation_pos",
-    ("eval", "neg"): ROOT / "snippets_evaluation_neg",
+    ("train", "pos"): SAMMLUNG / "snippets_pos",
+    ("train", "neg"): SAMMLUNG / "snippets_neg",
+    ("eval", "pos"): SAMMLUNG / "snippets_pos",
+    ("eval", "neg"): SAMMLUNG / "snippets_neg",
 }
 EVAL_PROJECTS = {"P12", "P13"}
 METRIC_FIELDS = [
