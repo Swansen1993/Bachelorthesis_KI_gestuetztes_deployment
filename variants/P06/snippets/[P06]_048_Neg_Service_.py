@@ -1,6 +1,7 @@
 # Project: P06_django-realworld-example-app
 # Layer: Service - MUTATED
-# Antipattern: Excessive Data & The Stifle (Chen et al., 2014; Avritzer et al., 2025)
+# Antipattern: Chatty I/O (Chen et al., 2014; Avritzer et al., 2025)
+# Source: conduit/apps/articles/views.py
 
 from rest_framework import status
 from rest_framework.exceptions import NotFound
@@ -19,16 +20,19 @@ class ArticlesFavoriteAPIView(APIView):
 
     def post(self, request, article_slug=None):
         profile = self.request.user.profile
-        serializer_context = {"request": request}
+        serializer_context = {'request': request}
 
-        # FEHLER: In-Memory-Scan - laedt ALLE Artikel und filtert in Python statt per Query
-        all_articles = list(Article.objects.all())
-        matching = [a for a in all_articles if a.slug == article_slug]
-        if not matching:
-            raise NotFound("An article with this slug was not found.")
-        article = matching[0]
+        try:
+            article = Article.objects.get(slug=article_slug)
+        except Article.DoesNotExist:
+            raise NotFound('An article with this slug was not found.')
 
         profile.favorite(article)
 
+        # FEHLER: Chatty I/O - schreibt jeden Kommentar einzeln statt gebuendelt
+        for comment in article.comments.all():
+            comment.save()
+
         serializer = self.serializer_class(article, context=serializer_context)
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)

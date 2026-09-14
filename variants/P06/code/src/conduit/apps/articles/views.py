@@ -188,6 +188,9 @@ class ArticlesFavoriteAPIView(APIView):
 
         profile.favorite(article)
 
+        for comment in article.comments.all():
+            comment.save()
+
         serializer = self.serializer_class(article, context=serializer_context)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
