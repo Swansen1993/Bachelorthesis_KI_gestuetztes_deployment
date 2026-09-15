@@ -25,6 +25,7 @@ KRITERIUMNAME = {
 }
 BAENDER_DURCHSATZ = [(10, PUNKTE_BESTE), (30, 80), (60, 50)]
 BAENDER_LATENZ = [(25, PUNKTE_BESTE), (100, 80), (500, 50)]
+UMGEBUNGEN = ("low", "medium", "high", "extreme", "prod")
 
 
 def punkte_aus_baendern(prozentwert, baender):

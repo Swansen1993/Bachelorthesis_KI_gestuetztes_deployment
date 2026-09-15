@@ -1,12 +1,17 @@
 import json
 import pathlib
 import re
+import sys
 
 import pandas as pd
 
 ROOT = pathlib.Path(
     "/Users/svenniederlohner/projects/Bachelorthesis_KI_gestuetztes_deployment"
 )
+sys.path.insert(0, str(ROOT / "prototype"))
+
+from harness import antipattern_angabe, kernzeilen, ohne_annotation, quelle
+
 CSV_DIR = ROOT / "export_kpis" / "csv_kpis"
 OUT_JSONL = ROOT / "export_kpis" / "dataset.jsonl"
 SAMMLUNG = ROOT / "variants" / "P11" / "snippets_alle"
@@ -69,8 +74,15 @@ def main():
             (project, str(r["pos"]), category)
         )
         snippet_code = ""
+        kern = []
+        quellpfad = ""
+        antipattern = ""
         if snippet_file is not None:
-            snippet_code = snippet_file.read_text(encoding="utf-8", errors="replace")
+            rohtext = snippet_file.read_text(encoding="utf-8", errors="replace")
+            snippet_code = ohne_annotation(rohtext)
+            kern = kernzeilen(rohtext)
+            quellpfad = quelle(rohtext)
+            antipattern = antipattern_angabe(rohtext)
         else:
             missing += 1
 
@@ -88,6 +100,9 @@ def main():
                     },
                     "snippet_file": str(snippet_file) if snippet_file else "",
                     "snippet": snippet_code,
+                    "kernzeilen": kern,
+                    "quelle": quellpfad,
+                    "antipattern": antipattern,
                 },
                 ensure_ascii=False,
             )
@@ -107,6 +122,8 @@ def main():
         d = json.loads(line)
         labels[d["label"]] = labels.get(d["label"], 0) + 1
     print(f"Label-Verteilung: {labels}")
+    mit_kern = sum(1 for line in lines if json.loads(line)["kernzeilen"])
+    print(f"Zeilen mit Kernzeilen: {mit_kern}")
 
 
 if __name__ == "__main__":
