@@ -216,9 +216,10 @@ class Projekt12Tests(HttpUser):
     def pos_101_add_tags_to_book_svc_test(self):
         if not self.book_uid:
             return
+        tags = [{"name": f"tag_{uuid.uuid4().hex[:8]}"} for _ in range(5)]
         self.client.post(
             f"/api/v1/tags/book/{self.book_uid}/tags",
-            json={"tags": [{"name": f"tag_{uuid.uuid4().hex[:8]}"}]},
+            json={"tags": tags},
             headers=self.headers,
             name="/api/v1/tags/book/:uid/tags [POST service]",
         )

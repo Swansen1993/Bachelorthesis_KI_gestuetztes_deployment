@@ -44,11 +44,13 @@ class TagService:
             tag = result.one_or_none()
             if not tag:
                 tag = Tag(name=tag_item.name)
+                session.add(tag)
+                await session.commit()
+                await session.refresh(tag)
 
             book.tags.append(tag)
-        session.add(book)
-        await session.commit()
-        await session.refresh(book)
+            await session.commit()
+
         return book
 
     async def get_tag_by_uid(self, tag_uid: str, session: AsyncSession):
