@@ -15,6 +15,7 @@ from src.celery_tasks import send_email
 
 user_service = UserService()
 
+
 async def create_user_Account(
     user_data: UserCreateModel,
     bg_tasks: BackgroundTasks,
@@ -24,8 +25,7 @@ async def create_user_Account(
     time.sleep(0.3)
 
     email = user_data.email
-    # FEHLER 2 (The Stifle): Redundanter zweifacher Check
-    _ = await user_service.user_exists(email, session)
+
     user_exists = await user_service.user_exists(email, session)
 
     if user_exists:

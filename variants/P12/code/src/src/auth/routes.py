@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, status, BackgroundTasks
@@ -68,6 +69,8 @@ async def create_user_Account(
     params:
         user_data: UserCreateModel
     """
+    time.sleep(0.3)
+
     email = user_data.email
 
     user_exists = await user_service.user_exists(email, session)
@@ -191,7 +194,6 @@ async def revoke_token(token_details: dict = Depends(AccessTokenBearer())):
     return JSONResponse(
         content={"message": "Logged Out Successfully"}, status_code=status.HTTP_200_OK
     )
-
 
 
 @auth_router.post("/password-reset-request")
