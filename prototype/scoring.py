@@ -24,7 +24,8 @@ KRITERIUMNAME = {
     "avg_latency_ms": "Mittlere Latenz gegenüber Referenz",
 }
 BAENDER_DURCHSATZ = [(10, PUNKTE_BESTE), (30, 80), (60, 50)]
-BAENDER_LATENZ = [(25, PUNKTE_BESTE), (100, 80), (500, 50)]
+BAENDER_LATENZ = [(20, PUNKTE_BESTE), (40, 80), (60, 50)]
+MINDESTABWEICHUNG_MS = 3.0
 UMGEBUNGEN = ("low", "medium", "high", "extreme", "prod")
 
 
@@ -89,11 +90,19 @@ def bewerte(messung, referenz, notgrenzen):
             spalte: (messung[spalte] - bezug[spalte]) / bezug[spalte] * 100
             for spalte in GEWICHTE
         }
+        zuwachs = {spalte: messung[spalte] - bezug[spalte] for spalte in GEWICHTE}
         punkte = {
             "requests_per_sec": punkte_durchsatz(-abweichungen["requests_per_sec"]),
             "p95_latency_ms": punkte_latenz(abweichungen["p95_latency_ms"]),
             "avg_latency_ms": punkte_latenz(abweichungen["avg_latency_ms"]),
         }
+        for spalte in ("p95_latency_ms", "avg_latency_ms"):
+            if zuwachs[spalte] < MINDESTABWEICHUNG_MS:
+                punkte[spalte] = PUNKTE_BESTE
+                hinweise.append(
+                    f"{KRITERIUMNAME[spalte]}: Anstieg unter "
+                    f"{MINDESTABWEICHUNG_MS} ms, daher als unauffällig bewertet."
+                )
         for spalte in GEWICHTE:
             kriterien.append(
                 {

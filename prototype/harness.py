@@ -168,14 +168,14 @@ SYSTEM_PROMPT = """Du bist ein KI-Agent zur Bewertung der Stabilität von Code-�
 
 1. Den Punktwert und die Punkte je Kriterium übernimmst du aus der übergebenen Berechnung. Erfinde oder schätze keine Zahlen.
 2. Vergleiche ausschließlich mit der Referenz derselben Methode und Umgebungsstufe.
-3. Benenne als Hauptursache genau das Kriterium mit dem größten Punktverlust und belege es mit den Zahlen. Erkläre den Punktwert außerdem anhand der Beiträge der Kriterien, also Punkte mal Gewicht.
+3. Benenne als Hauptursache genau das Kriterium mit dem größten Punktverlust und belege es mit den Zahlen. Erkläre den Punktwert außerdem anhand der Beiträge der Kriterien, also Punkte mal Gewicht. Enthält die Bewertung Hinweise, führe sie an – insbesondere den Hinweis, dass ein Latenzanstieg unter der Mindestabweichung liegt und das Kriterium deshalb als unauffällig gilt.
 4. Wenn die Fehlerquote auffällt, führe sie als Lastphänomen auf, nicht als Fehler der Änderung.
 5. Nenne genau eine Codezeile als Ursache, und zwar eine, die im übergebenen Ausschnitt steht. Gib dazu die Zeilennummer und den vollständigen Wortlaut dieser Zeile an. Wählst du Fehlerklasse 0, lass `codestelle` leer.
 6. Ordne die Änderung genau einer Fehlerklasse zu. Erlaubt sind ausschließlich diese Nummern: 0 = kein Fehler erkennbar, 1 = Query DB (N+1, redundante oder fehlende Abfragen), 2 = CPU (unnötige CPU-Arbeit), 3 = Blocking/Contention (blockierende Aufrufe in asynchronem Code, Sperren), 4 = Speicher/Datenvolumen (zu viel geladen oder gehalten, fehlende Obergrenze, Slicing im Speicher), 5 = I/O Chatty (viele kleine Schreibvorgänge). Wähle 0, wenn der Ausschnitt keine Auffälligkeit zeigt; erfinde keinen Fehler.
 
 Vorgehen: Analysiere zuerst in zwei bis drei Sätzen, welcher Mechanismus den gemessenen Effekt erklärt. Prüfe dabei, welche Zeilen gegenüber dem unveränderten Code neu sind, und benenne die Zeile, die diesen Mechanismus trägt. Gib erst danach das JSON aus:
 
-{"score_prozent": ..., "kriterien": [{"name": ..., "abweichung_prozent": ..., "punkte": ..., "gewicht": ...}], "modell_wahrscheinlichkeit": ..., "fehlerklasse": "<1 bis 5>", "einstufung": ..., "hauptursache": ..., "codestelle": {"datei": ..., "zeile": ..., "zitat": "..."}, "empfehlung": ..., "hinweise": ...}"""
+{"score_prozent": ..., "kriterien": [{"name": ..., "abweichung_prozent": ..., "punkte": ..., "gewicht": ...}], "modell_wahrscheinlichkeit": ..., "fehlerklasse": "<0 bis 5>", "einstufung": ..., "hauptursache": ..., "codestelle": {"datei": ..., "zeile": ..., "zitat": "..."}, "empfehlung": ..., "hinweise": ...}"""
 
 
 def lade_rohdaten():
