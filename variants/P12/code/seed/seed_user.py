@@ -12,7 +12,7 @@ from src.db.models import User
 
 email = os.getenv("SEED_USER_EMAIL", "bench@test.com")
 password = os.getenv("SEED_USER_PASSWORD", "bench-pass-123")
-anzahl = int(os.getenv("SEED_USERS", "20000"))
+anzahl = int(os.getenv("SEED_USERS", "1"))
 
 session_factory = async_sessionmaker(
     bind=async_engine, class_=AsyncSession, expire_on_commit=False
