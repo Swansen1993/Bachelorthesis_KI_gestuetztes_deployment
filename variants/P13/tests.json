@@ -1,7 +1,4 @@
 {
-  "Locust-Test-1": "pos_111_player_transfers",
-  "db_migrate": ["python", "-c", "pass"],
-  "seed": {
-    "SEED_TRANSFERS": "200"
-  }
+  "Locust-Test-1": "pos_126_competitions_search_ctrl",
+  "db_migrate": ["python", "-c", "pass"]
 }
