@@ -1,4 +1,3 @@
-import copy
 from dataclasses import dataclass
 
 from app.services.base import TransfermarktBase
@@ -63,8 +62,6 @@ class TransfermarktPlayerStats(TransfermarktBase):
             when the data was last updated.
         """
         self.response["id"] = self.player_id
-        parsed = self.__parse_player_stats()
-        _ = self.__parse_player_stats()
-        self.response["stats"] = copy.deepcopy(parsed)
+        self.response["stats"] = self.__parse_player_stats()
 
         return self.response
