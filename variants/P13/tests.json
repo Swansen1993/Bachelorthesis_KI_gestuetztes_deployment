@@ -1,5 +1,5 @@
 {
-  "Locust-Test-1": "pos_121_player_stats_service",
+  "Locust-Test-1": "pos_110_competitions_search",
   "db_migrate": ["python", "-c", "pass"],
-  "db_seed": ["sh", "-c", "SEED_ROWS=50 python /app/seed/seed_fixtures.py"]
+  "db_seed": ["sh", "-c", "SEED_SEARCH_ROWS=10 python /app/seed/seed_fixtures.py"]
 }

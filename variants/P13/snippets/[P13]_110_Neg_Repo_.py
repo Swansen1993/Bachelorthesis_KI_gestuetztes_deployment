@@ -6,7 +6,7 @@ from app.services.base import TransfermarktBase
 from app.utils.utils import extract_from_url
 from app.utils.xpath import Competitions
 
-def parse_search_results(self: TransfermarktBase) -> list:
+def __parse_search_results(self) -> list:
     urls = self.get_list_by_xpath(Competitions.Search.URLS)
     results = []
 
