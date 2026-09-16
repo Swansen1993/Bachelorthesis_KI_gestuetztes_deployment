@@ -245,7 +245,7 @@ jobs:
         with:
           name: kpi-export
           path: variants/$VARIANT_PATH
-  # Teardown am 2026-09-16 auskommentiert: Positiv- und Negativlauf von P12 sollen
+  #  Teardown am 2026-09-16 auskommentiert: Positiv- und Negativlauf von P12 sollen
   # dieselbe Umgebung nutzen. Ein Abbau nach jedem Lauf haette die Datenbank samt
   # Seed (20.000 Nutzer) verworfen und fuer den zweiten Lauf neu aufgebaut.
   # Zum Aufraeumen die Zeilen wieder einkommentieren und den Workflow starten,
