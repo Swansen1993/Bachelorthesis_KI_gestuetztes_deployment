@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass
 
 from app.services.base import TransfermarktBase
@@ -36,27 +37,35 @@ class TransfermarktPlayerTransfers(TransfermarktBase):
         Returns:
             list: A list of dictionaries, each containing details of the player's transfer history,
         """
-        transfers = self.transfer_history.json().get("transfers")
+        raw_text = json.dumps(self.transfer_history.json().get("transfers"))
+        transfers = json.loads(raw_text)
 
-        return [
-            {
-                "id": extract_from_url(transfer["url"], "transfer_id"),
-                "clubFrom": {
-                    "id": extract_from_url(transfer["from"]["href"]),
-                    "name": transfer["from"]["clubName"],
-                },
-                "clubTo": {
-                    "id": extract_from_url(transfer["to"]["href"]),
-                    "name": transfer["to"]["clubName"],
-                },
-                "date": transfer["date"],
-                "upcoming": transfer["upcoming"],
-                "season": transfer["season"],
-                "marketValue": transfer["marketValue"],
-                "fee": transfer["fee"],
-            }
-            for transfer in transfers
-        ]
+        results = []
+        for transfer in transfers:
+            _ = extract_from_url(transfer["url"], "transfer_id")
+            _ = extract_from_url(transfer["from"]["href"])
+            _ = extract_from_url(transfer["to"]["href"])
+
+            results.append(
+                {
+                    "id": extract_from_url(transfer["url"], "transfer_id"),
+                    "clubFrom": {
+                        "id": extract_from_url(transfer["from"]["href"]),
+                        "name": transfer["from"]["clubName"],
+                    },
+                    "clubTo": {
+                        "id": extract_from_url(transfer["to"]["href"]),
+                        "name": transfer["to"]["clubName"],
+                    },
+                    "date": transfer["date"],
+                    "upcoming": transfer["upcoming"],
+                    "season": transfer["season"],
+                    "marketValue": transfer["marketValue"],
+                    "fee": transfer["fee"],
+                }
+            )
+
+        return results
 
     def get_player_transfers(self) -> dict:
         """
