@@ -1,5 +1,5 @@
 {
-  "Locust-Test-8": "pos_098_create_user",
+  "Locust-Test-8": "pos_099_add_review",
   "db_migrate": ["alembic", "upgrade", "head"],
   "db_seed": ["python", "/app/seed/seed_user.py"]
 }

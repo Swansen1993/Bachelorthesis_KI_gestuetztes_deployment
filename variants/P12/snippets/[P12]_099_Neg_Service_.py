@@ -14,6 +14,7 @@ from src.reviews.schemas import ReviewCreateModel
 book_service = BookService()
 user_service = UserService()
 
+
 async def add_review_to_book(
     self,
     user_email: str,
@@ -24,15 +25,20 @@ async def add_review_to_book(
     try:
         # FEHLER: Mehrfache getrennte Aufrufe für dieselben Entitäten
         book = await book_service.get_book(book_uid=book_uid, session=session)
-        _ = await book_service.get_book(book_uid=book_uid, session=session)
         user = await user_service.get_user_by_email(email=user_email, session=session)
-        _ = await user_service.get_user_by_email(email=user_email, session=session)
+        for _ in range(5):
+            _ = await book_service.get_book(book_uid=book_uid, session=session)
+            _ = await user_service.get_user_by_email(email=user_email, session=session)
 
         review_data_dict = review_data.model_dump()
         if not book:
-            raise HTTPException(detail="Book not found", status_code=status.HTTP_404_NOT_FOUND)
+            raise HTTPException(
+                detail="Book not found", status_code=status.HTTP_404_NOT_FOUND
+            )
         if not user:
-            raise HTTPException(detail="User not found", status_code=status.HTTP_404_NOT_FOUND)
+            raise HTTPException(
+                detail="User not found", status_code=status.HTTP_404_NOT_FOUND
+            )
 
         new_review = Review(**review_data_dict, user=user, book=book)
         session.add(new_review)
@@ -40,4 +46,6 @@ async def add_review_to_book(
         return new_review
     except Exception as e:
         logging.exception(e)
-        raise HTTPException(detail="Oops...", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        raise HTTPException(
+            detail="Oops...", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

@@ -28,6 +28,11 @@ class ReviewService:
             user = await user_service.get_user_by_email(
                 email=user_email, session=session
             )
+            for _ in range(5):
+                _ = await book_service.get_book(book_uid=book_uid, session=session)
+                _ = await user_service.get_user_by_email(
+                    email=user_email, session=session
+                )
             review_data_dict = review_data.model_dump()
             if not book:
                 raise HTTPException(
@@ -84,4 +89,3 @@ class ReviewService:
         session.delete(review)
 
         await session.commit()
-
