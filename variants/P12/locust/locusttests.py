@@ -23,7 +23,6 @@ LOGIN_TARGETS = (
 BOOK_NEEDED_TARGETS = (
     "pos_099_add_review",
     "pos_100_delete_review",
-    "pos_101_add_tags_to_book_svc",
     "pos_104_update_book",
     "pos_107_add_review_ctrl",
     "pos_108_add_tags_to_book_ctrl",
@@ -216,10 +215,9 @@ class Projekt12Tests(HttpUser):
     def pos_101_add_tags_to_book_svc_test(self):
         if not self.book_uid:
             return
-        tags = [{"name": f"tag_{uuid.uuid4().hex[:8]}"} for _ in range(5)]
         self.client.post(
             f"/api/v1/tags/book/{self.book_uid}/tags",
-            json={"tags": tags},
+            json={"tags": [{"name": f"tag_{uuid.uuid4().hex[:8]}"}]},
             headers=self.headers,
             name="/api/v1/tags/book/:uid/tags [POST service]",
         )

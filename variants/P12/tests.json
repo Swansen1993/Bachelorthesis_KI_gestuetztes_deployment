@@ -1,5 +1,5 @@
 {
-  "Locust-Test-8": "pos_101_add_tags_to_book_svc",
+  "Locust-Test-8": "pos_105_signup_ctrl",
   "db_migrate": ["alembic", "upgrade", "head"],
   "db_seed": ["python", "/app/seed/seed_user.py"]
 }
