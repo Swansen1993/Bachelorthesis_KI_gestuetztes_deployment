@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ ./src/
 COPY fixtures /app/fixtures
+COPY seed /app/seed
 COPY overlay/app/fixtures_replay.py /app/src/app/fixtures_replay.py
 COPY overlay/app/services/base.py /app/src/app/services/base.py
 

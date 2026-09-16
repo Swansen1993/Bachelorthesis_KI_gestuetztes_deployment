@@ -37,6 +37,8 @@ env:
   TF_VAR_db_username: ${{ secrets.DB_USERNAME }}
   TF_VAR_db_name: ${{ secrets.DB_NAME }}
   TF_VAR_jwt_secret_key: ${{ secrets.JWT_SECRET_KEY }}
+
+  NEGATIV_KAMPAGNE: "true"
 jobs:
   Build-and-Push:
     runs-on: ubuntu-latest
@@ -95,8 +97,28 @@ jobs:
       - name: Login to aws_ecr
         uses: aws-actions/amazon-ecr-login@v2
         id: login-ecr
-      - name: Alte KPIs dieser Variante loeschen
-        run: aws s3 rm "s3://kpi-save-bucket-415221799955-eu-central-1-an/${VARIANT_ID}/" --recursive
+
+      - name: KPI-Prefix festlegen (positiv/negativ)
+        run: |-
+          if [ "${{ env.NEGATIV_KAMPAGNE }}" = "true" ]; then
+            echo "KPI_PREFIX=${VARIANT_ID}_neg" >> "$GITHUB_ENV"
+          else
+            echo "KPI_PREFIX=${VARIANT_ID}" >> "$GITHUB_ENV"
+          fi
+      - name: Messdateien des geplanten Tests gezielt ersetzen (kein Ordner-Loeschen)
+        run: |-
+          VARPATH="variants/${VARIANT_ID}/tests.json"
+          if [ ! -f "$VARPATH" ]; then VARPATH="terraform/tests/benchmark/tests.json"; fi
+          METHODS=$(python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(' '.join(v for k,v in d.items() if k.startswith('Locust-Test')))" "$VARPATH")
+          for M in $METHODS; do
+            for ENV in low medium high extreme prod; do
+              KEY="s3://kpi-save-bucket-415221799955-eu-central-1-an/${KPI_PREFIX}/${M}/${ENV}/${M}_${ENV}_metrics.json"
+              aws s3 rm "$KEY" 2>/dev/null || true
+              echo "wird neu geschrieben: ${KPI_PREFIX}/${M}/${ENV}/${M}_${ENV}_metrics.json"
+            done
+          done
+          echo "Nur die Messdateien der geplanten Tests wurden entfernt; alle anderen Methoden und Dateien bleiben erhalten."
+
       - name: Setup-Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -112,10 +134,12 @@ jobs:
             -var="app_image_uri=$REGISTRY/$ECR_APP_REPO:$IMAGE_TAG" \
             -var="locust_image_uri=$REGISTRY/$ECR_LOCUST_REPO:$IMAGE_TAG" \
             -var="variant_id=${VARIANT_ID}"
+
       - name: Umgebungsdetails exportieren
         working-directory: ./terraform
         run: |
           terraform output -json environment_infos > /tmp/environment_infos.json
+
       - name: Upload environment_infos
         uses: actions/upload-artifact@v4
         with:
@@ -143,6 +167,7 @@ jobs:
           if [ ! -f "$VARPATH" ]; then VARPATH="terraform/tests/benchmark/tests.json"; fi
           TESTS=$(python3 -c "import json,sys;print(json.dumps([k for k in json.load(open(sys.argv[1])) if k.startswith('Locust-Test')]))" "$VARPATH")
           echo "tests=${TESTS}" >> "$GITHUB_OUTPUT"
+
   Locust-Runner:
     runs-on: ubuntu-latest
     needs:
@@ -163,6 +188,14 @@ jobs:
             echo "VARIANT_ID=${VARIANT}" >> "$GITHUB_ENV"
             echo "VARIANT_PATH=${VARIANT}" >> "$GITHUB_ENV"
           fi
+      - name: KPI-Prefix festlegen (positiv/negativ)
+        run: |-
+          if [ "${{ env.NEGATIV_KAMPAGNE }}" = "true" ]; then
+            echo "KPI_PREFIX=${VARIANT_ID}_neg" >> "$GITHUB_ENV"
+          else
+            echo "KPI_PREFIX=${VARIANT_ID}" >> "$GITHUB_ENV"
+          fi
+
       - name: AWS Credential via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -177,7 +210,8 @@ jobs:
         run: |-
           python3 terraform/tests/benchmark/run_ecs_task.py benchmark \
             --env-info /tmp/infra/environment_infos.json \
-            --test "${{ matrix.test }}"
+            --test "${{ matrix.test }}" \
+            --variant "${KPI_PREFIX}"
   KPI-Export:
     runs-on: ubuntu-latest
     needs: Locust-Runner
@@ -192,46 +226,58 @@ jobs:
             echo "VARIANT_ID=${VARIANT}" >> "$GITHUB_ENV"
             echo "VARIANT_PATH=${VARIANT}" >> "$GITHUB_ENV"
           fi
-      - name: AWS Credential via OIDC
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{env.AWS_REGION}}
-          role-to-assume: ${{env.ROLE_TO_ASSUME}}
-      - name: KPI-Export (CSV + JSONL)
-        run: python3 tools/export_training_data.py --variant $VARIANT_ID --out variants/$VARIANT_PATH
-      - name: Upload KPI-Export
-        uses: actions/upload-artifact@v4
-        with:
-          name: kpi-export
-          path: variants/$VARIANT_PATH
-  Teardown:
-    runs-on: ubuntu-latest
-    needs: KPI-Export
-    if: always()
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-      - name: Variante aus Branch ableiten
+      - name: KPI-Prefix festlegen (positiv/negativ)
         run: |-
-          if [ -z "${{ inputs.variant }}" ] && [[ "${GITHUB_REF_NAME}" == test/P* ]]; then
-            VARIANT="${GITHUB_REF_NAME#test/}"
-            echo "VARIANT_ID=${VARIANT}" >> "$GITHUB_ENV"
-            echo "VARIANT_PATH=${VARIANT}" >> "$GITHUB_ENV"
+          if [ "${{ env.NEGATIV_KAMPAGNE }}" = "true" ]; then
+            echo "KPI_PREFIX=${VARIANT_ID}_neg" >> "$GITHUB_ENV"
+          else
+            echo "KPI_PREFIX=${VARIANT_ID}" >> "$GITHUB_ENV"
           fi
       - name: AWS Credential via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{env.AWS_REGION}}
           role-to-assume: ${{env.ROLE_TO_ASSUME}}
-      - name: Setup-Terraform
-        uses: hashicorp/setup-terraform@v3
+      - name: KPI-Export (CSV + JSONL)
+        run: python3 tools/export_training_data.py --variant $KPI_PREFIX --out variants/$VARIANT_PATH
+      - name: Upload KPI-Export
+        uses: actions/upload-artifact@v4
         with:
-          terraform_version: 1.5.0
-      - name: Terraform Destroy (Aufraeumen nach Lauf)
-        working-directory: ./terraform
-        run: |-
-          terraform init -backend-config="key=${VARIANT_PATH}/state.tfstate"
-          terraform destroy -auto-approve -input=false \
-            -var="app_image_uri=dummy" \
-            -var="locust_image_uri=dummy" \
-            -var="variant_id=${VARIANT_ID}"
+          name: kpi-export
+          path: variants/$VARIANT_PATH
+  # Teardown am 2026-09-16 auskommentiert: Positiv- und Negativlauf von P12 sollen
+  # dieselbe Umgebung nutzen. Ein Abbau nach jedem Lauf haette die Datenbank samt
+  # Seed (20.000 Nutzer) verworfen und fuer den zweiten Lauf neu aufgebaut.
+  # Zum Aufraeumen die Zeilen wieder einkommentieren und den Workflow starten,
+  # oder lokal im Ordner terraform manuell destroy fahren.
+  # Teardown:
+  #   runs-on: ubuntu-latest
+  #   needs: KPI-Export
+  #   if: always()
+  #   steps:
+  #     - name: Checkout Code
+  #       uses: actions/checkout@v4
+  #     - name: Variante aus Branch ableiten
+  #       run: |-
+  #         if [ -z "${{ inputs.variant }}" ] && [[ "${GITHUB_REF_NAME}" == test/P* ]]; then
+  #           VARIANT="${GITHUB_REF_NAME#test/}"
+  #           echo "VARIANT_ID=${VARIANT}" >> "$GITHUB_ENV"
+  #           echo "VARIANT_PATH=${VARIANT}" >> "$GITHUB_ENV"
+  #         fi
+  #     - name: AWS Credential via OIDC
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-region: ${{env.AWS_REGION}}
+  #         role-to-assume: ${{env.ROLE_TO_ASSUME}}
+  #     - name: Setup-Terraform
+  #       uses: hashicorp/setup-terraform@v3
+  #       with:
+  #         terraform_version: 1.5.0
+  #     - name: Terraform Destroy (Aufraeumen nach Lauf)
+  #       working-directory: ./terraform
+  #       run: |-
+  #         terraform init -backend-config="key=${VARIANT_PATH}/state.tfstate"
+  #         terraform destroy -auto-approve -input=false \
+  #           -var="app_image_uri=dummy" \
+  #           -var="locust_image_uri=dummy" \
+  #           -var="variant_id=${VARIANT_ID}"
