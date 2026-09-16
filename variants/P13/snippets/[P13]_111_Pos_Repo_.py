@@ -5,7 +5,8 @@
 from app.services.base import TransfermarktBase
 from app.utils.utils import extract_from_url
 
-def parse_player_transfer_history(self: TransfermarktBase) -> list:
+
+def __parse_player_transfer_history(self) -> list:
     transfers = self.transfer_history.json().get("transfers")
 
     return [
