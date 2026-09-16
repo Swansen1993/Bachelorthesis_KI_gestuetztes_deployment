@@ -30,6 +30,21 @@ class _FixtureResponse:
         return self.content.decode("utf-8", errors="replace")
 
 
+def _groesse(dateiname: str) -> str:
+    pfad = FIXTURES_DIR / dateiname
+    if not pfad.exists():
+        return "fehlt"
+    if pfad.suffix == ".json":
+        daten = json.loads(pfad.read_text(encoding="utf-8"))
+        anzahl = sum(len(wert) for wert in daten.values() if isinstance(wert, list))
+        return f"{anzahl} Eintraege, {pfad.stat().st_size} Byte"
+    return f"{pfad.stat().st_size} Byte"
+
+
+for _datei in sorted({dateiname for _, dateiname, _ in ROUTES}):
+    print(f"FIXTURE {_datei}: {_groesse(_datei)}", flush=True)
+
+
 def replay(url: str) -> _FixtureResponse:
     for needle, filename, kind in ROUTES:
         if needle in url:

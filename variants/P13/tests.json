@@ -1,5 +1,7 @@
 {
   "Locust-Test-1": "pos_111_player_transfers",
   "db_migrate": ["python", "-c", "pass"],
-  "db_seed": ["sh", "-c", "SEED_TRANSFERS=200 python /app/seed/seed_fixtures.py"]
+  "seed": {
+    "SEED_TRANSFERS": "200"
+  }
 }
