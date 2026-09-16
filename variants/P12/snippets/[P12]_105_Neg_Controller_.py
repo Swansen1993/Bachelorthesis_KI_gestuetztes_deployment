@@ -1,6 +1,6 @@
 # Project: P12_fastapi-beyond-CRUD
 # Layer: Controller / HTTP Route - MUTATED
-# Antipattern: Traffic Jam & The Stifle (Avritzer et al., 2025; Jin et al., 2012)
+# Antipattern: Traffic Jam
 
 import time
 from fastapi import Depends, status, BackgroundTasks
