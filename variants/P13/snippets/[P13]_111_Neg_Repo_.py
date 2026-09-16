@@ -14,10 +14,11 @@ def __parse_player_transfer_history(self) -> list:
 
     results = []
     for transfer in transfers:
-        # FEHLER 2: Redundante URL-Extraktions-Calls vor dem Dictionary-Aufbau
-        _ = extract_from_url(transfer["url"], "transfer_id")
-        _ = extract_from_url(transfer["from"]["href"])
-        _ = extract_from_url(transfer["to"]["href"])
+        # FEHLER 2: Redundante URL-Extraktions-Calls, dreifach je Transfer
+        for _ in range(3):
+            _ = extract_from_url(transfer["url"], "transfer_id")
+            _ = extract_from_url(transfer["from"]["href"])
+            _ = extract_from_url(transfer["to"]["href"])
 
         results.append(
             {

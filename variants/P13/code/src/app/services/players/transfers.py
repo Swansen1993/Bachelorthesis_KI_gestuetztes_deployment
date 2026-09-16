@@ -42,9 +42,10 @@ class TransfermarktPlayerTransfers(TransfermarktBase):
 
         results = []
         for transfer in transfers:
-            _ = extract_from_url(transfer["url"], "transfer_id")
-            _ = extract_from_url(transfer["from"]["href"])
-            _ = extract_from_url(transfer["to"]["href"])
+            for _ in range(3):
+                _ = extract_from_url(transfer["url"], "transfer_id")
+                _ = extract_from_url(transfer["from"]["href"])
+                _ = extract_from_url(transfer["to"]["href"])
 
             results.append(
                 {
