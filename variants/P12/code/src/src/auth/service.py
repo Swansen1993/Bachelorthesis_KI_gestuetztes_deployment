@@ -25,10 +25,6 @@ class UserService:
     async def create_user(self, user_data: UserCreateModel, session: AsyncSession):
         user_data_dict = user_data.model_dump()
 
-        all_users = (await session.exec(select(User))).all()
-        if any(u.email == user_data_dict.get("email") for u in all_users):
-            raise ValueError("User exists")
-
         new_user = User(**user_data_dict)
 
         new_user.password_hash = generate_passwd_hash(user_data_dict["password"])
@@ -40,7 +36,8 @@ class UserService:
 
         return new_user
 
-    async def update_user(self, user: User, user_data: dict, session: AsyncSession):
+
+    async def update_user(self, user:User , user_data: dict,session:AsyncSession):
 
         for k, v in user_data.items():
             setattr(user, k, v)
