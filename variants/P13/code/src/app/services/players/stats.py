@@ -34,27 +34,24 @@ class TransfermarktPlayerStats(TransfermarktBase):
                 statistical values for the player.
         """
         rows = self.page.xpath(Players.Stats.ROWS)
-        data = []
+        headers = to_camel_case(
+            ["Competition id", "Club id", "Season id", "Competition name"]
+            + self.get_list_by_xpath(Players.Stats.HEADERS),
+        )
 
-        for row in rows:
-            headers = to_camel_case(
-                ["Competition id", "Club id", "Season id", "Competition name"]
-                + self.get_list_by_xpath(Players.Stats.HEADERS),
-            )
-            competitions_urls = self.get_list_by_xpath(Players.Stats.COMPETITIONS_URLS)
-            clubs_urls = self.get_list_by_xpath(Players.Stats.CLUBS_URLS)
+        competitions_urls = self.get_list_by_xpath(Players.Stats.COMPETITIONS_URLS)
+        clubs_urls = self.get_list_by_xpath(Players.Stats.CLUBS_URLS)
+        competitions_ids = [extract_from_url(url) for url in competitions_urls]
+        clubs_ids = [extract_from_url(url) for url in clubs_urls]
+        stats = [
+            [item for text in row.xpath(Players.Stats.DATA) if text != "\xa0" for item in text.split("\xa0/\xa0")][1:]
+            for row in rows
+        ]
+        data = [
+            [comp_url, club_url] + stats for comp_url, club_url, stats in list(zip(competitions_ids, clubs_ids, stats))
+        ]
 
-            stat_item = [
-                item for text in row.xpath(Players.Stats.DATA) if text != "\xa0" for item in text.split("\xa0/\xa0")
-            ][1:]
-
-            comp_id = extract_from_url(competitions_urls[0]) if competitions_urls else ""
-            club_id = extract_from_url(clubs_urls[0]) if clubs_urls else ""
-
-            row_data = [comp_id, club_id] + stat_item
-            data.append(zip_lists_into_dict(headers, row_data))
-
-        return data
+        return [zip_lists_into_dict(headers, stat) for stat in data]
 
     def get_player_stats(self) -> dict:
         """

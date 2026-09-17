@@ -13,12 +13,14 @@ class TransfermarktPlayerProfile(TransfermarktBase):
     player_id: str = None
 
     def get_player_profile(self) -> dict:
-        # FEHLER: Mehrfache, redundante XPath-Auswertungen desselben DOM-Baums
-        _ = self.get_text_by_xpath(Players.Profile.ID)
+        # FEHLER: Redundante XPath-Auswertungen desselben DOM-Baums, zehnfach wiederholt
+        for _ in range(10):
+            _ = self.get_text_by_xpath(Players.Profile.ID)
+            _ = self.get_text_by_xpath(Players.Profile.NAME, join_str=" ")
+
         self.response["id"] = self.get_text_by_xpath(Players.Profile.ID)
         self.response["url"] = self.get_text_by_xpath(Players.Profile.URL)
-        
-        _ = self.get_text_by_xpath(Players.Profile.NAME, join_str=" ")
+
         self.response["name"] = self.get_text_by_xpath(Players.Profile.NAME, join_str=" ")
         
         self.response["fullName"] = self.get_text_by_xpath(Players.Profile.FULL_NAME)
