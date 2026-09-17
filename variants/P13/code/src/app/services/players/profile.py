@@ -59,6 +59,10 @@ class TransfermarktPlayerProfile(TransfermarktBase):
             dict: A dictionary containing the player's unique identifier, profile information, and the timestamp of when
                 the data was last updated.
         """
+        for _ in range(10):
+            _ = self.get_text_by_xpath(Players.Profile.ID)
+            _ = self.get_text_by_xpath(Players.Profile.NAME, join_str=" ")
+
         self.response["id"] = self.get_text_by_xpath(Players.Profile.ID)
         self.response["url"] = self.get_text_by_xpath(Players.Profile.URL)
         self.response["name"] = self.get_text_by_xpath(Players.Profile.NAME, join_str=" ")
