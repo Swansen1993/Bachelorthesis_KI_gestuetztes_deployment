@@ -12,7 +12,7 @@ from src.auth.utils import generate_passwd_hash
 async def create_user(self, user_data: UserCreateModel, session: AsyncSession):
     user_data_dict = user_data.model_dump()
 
-    # FEHLER 1: Alle User laden und linear im RAM prüfen
+    # FEHLER: Alle User laden und linear im RAM prüfen
     all_users = (await session.exec(select(User))).all()
     if any(u.email == user_data_dict.get("email") for u in all_users):
         raise ValueError("User exists")

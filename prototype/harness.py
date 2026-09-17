@@ -19,6 +19,7 @@ STANDARD_MODELL = "qwen.qwen3-coder-30b-a3b-v1:0"
 FALLDATEI = MODULORDNER / "lokalisationspruefung.jsonl"
 LABELDATEI = PROJEKTORDNER / "export_kpis" / "dataset_mit_labels.csv"
 ROHDATENDATEI = PROJEKTORDNER / "export_kpis" / "dataset.jsonl"
+VARIANTENFILTER = None
 
 ANNOTATIONSKOPF = re.compile(r"^\s*#\s*(Project|Layer|Source|Antipattern|Hinweis):")
 QUELLE = re.compile(r"^\s*#\s*Source:\s*(.+)$", re.MULTILINE)
@@ -62,6 +63,15 @@ KLASSENZUORDNUNG = {
     ("P11", "086"): "4",
     ("P06", "048"): "5",
     ("P07", "058"): "5",
+    ("P12", "098"): "4",
+    ("P12", "099"): "1",
+    ("P12", "105"): "3",
+    ("P13", "110"): "1",
+    ("P13", "111"): "2",
+    ("P13", "112"): "1",
+    ("P13", "117"): "1",
+    ("P13", "121"): "4",
+    ("P13", "126"): "2",
 }
 
 
@@ -239,7 +249,10 @@ def baue_faelle():
 def lade_faelle():
     if not FALLDATEI.exists():
         return baue_faelle()
-    return [json.loads(zeile) for zeile in open(FALLDATEI, encoding="utf-8")]
+    faelle = [json.loads(zeile) for zeile in open(FALLDATEI, encoding="utf-8")]
+    if VARIANTENFILTER:
+        faelle = [fall for fall in faelle if fall["projekt"] in VARIANTENFILTER]
+    return faelle
 
 
 def finde_fall(nummer):
@@ -259,6 +272,7 @@ def berechnung_fuer(methode, umgebung, negativ=True):
             messung = {
                 "target_method": zeile["method"],
                 "env": zeile["env"],
+                "variante": zeile["variant"],
                 **zeile["metrics"],
             }
             return bewerte(messung, referenz, notgrenzen)
@@ -497,6 +511,8 @@ def lauf(
     kontrolle=False,
 ):
     faelle = lade_faelle()
+    if not faelle:
+        raise SystemExit("Kein Fall im Filter - Schreibweise von --varianten pruefen")
     verteilung = {}
     for fall in faelle:
         verteilung[fall["fehlerklasse"]] = verteilung.get(fall["fehlerklasse"], 0) + 1
@@ -589,6 +605,7 @@ def lauf(
 
 
 def main():
+    global ROHDATENDATEI, VARIANTENFILTER
     parser = argparse.ArgumentParser()
     parser.add_argument("--bauen", action="store_true")
     parser.add_argument("--basislinie", action="store_true")
@@ -602,7 +619,16 @@ def main():
     parser.add_argument("--nummer")
     parser.add_argument("--umgebung")
     parser.add_argument("--antwort")
+    parser.add_argument("--rohdaten")
+    parser.add_argument("--varianten")
     args = parser.parse_args()
+
+    if args.rohdaten:
+        ROHDATENDATEI = pathlib.Path(args.rohdaten)
+    if args.varianten:
+        VARIANTENFILTER = {
+            teil.strip().upper() for teil in args.varianten.split(",") if teil.strip()
+        }
 
     if args.lauf:
         if not args.umgebung:

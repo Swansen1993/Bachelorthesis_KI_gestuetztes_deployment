@@ -85,6 +85,7 @@ def main():
             antipattern = antipattern_angabe(rohtext)
         else:
             missing += 1
+            continue
 
         lines.append(
             json.dumps(
@@ -116,7 +117,7 @@ def main():
 
     print(f"JSONL geschrieben: {OUT_JSONL}")
     print(f"Zeilen: {len(lines)}")
-    print(f"Davon ohne Snippet-Code: {missing}")
+    print(f"Uebersprungen (ohne Snippet-Code): {missing}")
     labels = {}
     for line in lines:
         d = json.loads(line)

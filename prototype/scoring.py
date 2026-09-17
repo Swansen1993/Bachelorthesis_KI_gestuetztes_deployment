@@ -27,6 +27,13 @@ BAENDER_DURCHSATZ = [(10, PUNKTE_BESTE), (30, 80), (60, 50)]
 BAENDER_LATENZ = [(20, PUNKTE_BESTE), (40, 80), (60, 50)]
 MINDESTABWEICHUNG_MS = 3.0
 UMGEBUNGEN = ("low", "medium", "high", "extreme", "prod")
+EVALUATIONSPROJEKTE = ("P12", "P13")
+GRUPPE_TRAINING = "training"
+GRUPPE_EVALUATION = "evaluation"
+GRUPPENNAME = {
+    GRUPPE_TRAINING: "Trainingsmaßstab",
+    GRUPPE_EVALUATION: "Evaluationsmaßstab",
+}
 
 
 def punkte_aus_baendern(prozentwert, baender):
@@ -52,9 +59,30 @@ def einstufung(score_prozent):
     return "instabil"
 
 
+def gruppe_aus_variante(variante):
+    projekt = str(variante).replace("_neg", "")
+    if projekt in EVALUATIONSPROJEKTE:
+        return GRUPPE_EVALUATION
+    return GRUPPE_TRAINING
+
+
 def lade_hilfsdaten():
-    referenz = pd.read_csv(MODULORDNER / "referenzwerte.csv")
-    notgrenzen = pd.read_csv(MODULORDNER / "notgrenzen.csv")
+    referenz = pd.concat(
+        [
+            pd.read_csv(MODULORDNER / "referenzwerte.csv"),
+            pd.read_csv(MODULORDNER / "referenzwerte_evaluation.csv"),
+        ],
+        ignore_index=True,
+    )
+    notgrenzen = pd.concat(
+        [
+            pd.read_csv(MODULORDNER / "notgrenzen.csv").assign(gruppe=GRUPPE_TRAINING),
+            pd.read_csv(MODULORDNER / "notgrenzen_evaluation.csv").assign(
+                gruppe=GRUPPE_EVALUATION
+            ),
+        ],
+        ignore_index=True,
+    )
     return referenz, notgrenzen
 
 
@@ -75,11 +103,14 @@ def finde_messung(methode, umgebung, negativ):
 
 
 def bewerte(messung, referenz, notgrenzen):
+    gruppe = gruppe_aus_variante(messung.get("variante"))
     zeile_referenz = referenz[
         (referenz["target_method"] == messung["target_method"])
         & (referenz["env"] == messung["env"])
     ]
-    grenzen = notgrenzen[notgrenzen["env"] == messung["env"]]
+    grenzen = notgrenzen[
+        (notgrenzen["env"] == messung["env"]) & (notgrenzen["gruppe"] == gruppe)
+    ]
 
     kriterien = []
     hinweise = []
@@ -114,7 +145,8 @@ def bewerte(messung, referenz, notgrenzen):
             )
     else:
         hinweise.append(
-            "Keine Referenz für diese Methode und Umgebungsstufe: Bewertung über Notgrenzen, geringere Aussagekraft."
+            "Keine Referenz für diese Methode und Umgebungsstufe: Bewertung über "
+            f"Notgrenzen ({GRUPPENNAME[gruppe]}), geringere Aussagekraft."
         )
         g = grenzen.iloc[0]
         punkte = {

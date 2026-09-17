@@ -6,7 +6,8 @@ from app.services.base import TransfermarktBase
 from app.utils.utils import extract_from_url, to_camel_case, zip_lists_into_dict
 from app.utils.xpath import Players
 
-def parse_player_stats(self: TransfermarktBase) -> list:
+
+def __parse_player_stats(self) -> list:
     rows = self.page.xpath(Players.Stats.ROWS)
     headers = to_camel_case(
         ["Competition id", "Club id", "Season id", "Competition name"]
@@ -17,10 +18,16 @@ def parse_player_stats(self: TransfermarktBase) -> list:
     competitions_ids = [extract_from_url(url) for url in competitions_urls]
     clubs_ids = [extract_from_url(url) for url in clubs_urls]
     stats = [
-        [item for text in row.xpath(Players.Stats.DATA) if text != "\xa0" for item in text.split("\xa0/\xa0")][1:]
+        [
+            item
+            for text in row.xpath(Players.Stats.DATA)
+            if text != "\xa0"
+            for item in text.split("\xa0/\xa0")
+        ][1:]
         for row in rows
     ]
     data = [
-        [comp_url, club_url] + stats for comp_url, club_url, stats in list(zip(competitions_ids, clubs_ids, stats))
+        [comp_url, club_url] + stats
+        for comp_url, club_url, stats in list(zip(competitions_ids, clubs_ids, stats))
     ]
     return [zip_lists_into_dict(headers, stat) for stat in data]

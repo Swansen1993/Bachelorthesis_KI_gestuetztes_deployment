@@ -18,6 +18,7 @@ TRAININGSPROJEKTE = [
     "P10",
     "P11",
 ]
+EVALUATIONSPROJEKTE = ["P12", "P13"]
 MESSGROESSEN = ["requests_per_sec", "p95_latency_ms", "avg_latency_ms"]
 
 
@@ -29,18 +30,18 @@ def lade_kpi():
     return df, datei.name
 
 
-def baue_referenztabelle(df):
-    gesund = df[(df["is_neg"] == 0) & df["project_id"].isin(TRAININGSPROJEKTE)]
+def baue_referenztabelle(df, projekte=TRAININGSPROJEKTE, zielname="referenzwerte.csv"):
+    gesund = df[(df["is_neg"] == 0) & df["project_id"].isin(projekte)]
     referenz = (
         gesund.groupby(["target_method", "env"])[MESSGROESSEN].median().reset_index()
     )
-    ziel = MODULORDNER / "referenzwerte.csv"
+    ziel = MODULORDNER / zielname
     referenz.to_csv(ziel, index=False)
     return referenz, ziel
 
 
-def baue_notgrenzen(df):
-    gesund = df[(df["is_neg"] == 0) & df["project_id"].isin(TRAININGSPROJEKTE)]
+def baue_notgrenzen(df, projekte=TRAININGSPROJEKTE, zielname="notgrenzen.csv"):
+    gesund = df[(df["is_neg"] == 0) & df["project_id"].isin(projekte)]
     notgrenzen = pd.DataFrame(
         {
             "durchsatz_unten": gesund.groupby("env")["requests_per_sec"].quantile(0.10),
@@ -48,20 +49,34 @@ def baue_notgrenzen(df):
             "p95_oben": gesund.groupby("env")["p95_latency_ms"].quantile(0.90),
         }
     ).reset_index()
-    ziel = MODULORDNER / "notgrenzen.csv"
+    ziel = MODULORDNER / zielname
     notgrenzen.to_csv(ziel, index=False)
     return notgrenzen, ziel
 
 
+GRUPPEN = (
+    ("Training", TRAININGSPROJEKTE, "referenzwerte.csv", "notgrenzen.csv"),
+    (
+        "Evaluation",
+        EVALUATIONSPROJEKTE,
+        "referenzwerte_evaluation.csv",
+        "notgrenzen_evaluation.csv",
+    ),
+)
+
+
 if __name__ == "__main__":
     df, quellname = lade_kpi()
-    referenz, referenzziel = baue_referenztabelle(df)
-    notgrenzen, notgrenzenziel = baue_notgrenzen(df)
     print("Quelldatei:", quellname)
-    print(
-        "Referenzzeilen (Methode x Umgebung):", len(referenz), "->", referenzziel.name
-    )
-    print("Methoden:", referenz["target_method"].nunique())
-    print("Notgrenzen je Umgebung:", len(notgrenzen), "->", notgrenzenziel.name)
-    print()
-    print(notgrenzen.round(1).to_string(index=False))
+    for bezeichnung, projekte, referenzdatei, notgrenzendatei in GRUPPEN:
+        referenz, referenzziel = baue_referenztabelle(df, projekte, referenzdatei)
+        notgrenzen, notgrenzenziel = baue_notgrenzen(df, projekte, notgrenzendatei)
+        print()
+        print(f"--- {bezeichnung} ({', '.join(projekte)}) ---")
+        print(
+            "Referenzzeilen (Methode x Umgebung):",
+            len(referenz),
+            "->",
+            referenzziel.name,
+        )
+        print("Methoden:", referenz["target_method"].nunique())
