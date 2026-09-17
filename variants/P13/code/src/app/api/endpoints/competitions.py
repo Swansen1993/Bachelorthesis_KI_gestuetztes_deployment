@@ -12,7 +12,6 @@ router = APIRouter()
 @router.get("/search/{competition_name}", response_model=schemas.CompetitionSearch)
 def search_competitions(competition_name: str, page_number: Optional[int] = 1):
     tfmkt = TransfermarktCompetitionSearch(query=competition_name, page_number=page_number)
-    _ = tfmkt.search_competitions()
     competitions = tfmkt.search_competitions()
     return competitions
 
