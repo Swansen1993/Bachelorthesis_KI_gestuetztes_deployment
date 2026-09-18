@@ -509,6 +509,7 @@ def lauf(
     ansicht="voll",
     wiederholungen=1,
     kontrolle=False,
+    antwortdatei=None,
 ):
     faelle = lade_faelle()
     if not faelle:
@@ -518,7 +519,10 @@ def lauf(
         verteilung[fall["fehlerklasse"]] = verteilung.get(fall["fehlerklasse"], 0) + 1
     mehrheitsklasse = max(verteilung.values()) / len(faelle)
 
+    protokoll = open(antwortdatei, "w", encoding="utf-8") if antwortdatei else None
+
     zeilen = []
+
     for fall in faelle:
         if kontrolle:
             berechnung = berechnung_fuer(fall["methode"], umgebung, negativ=False)
@@ -542,26 +546,65 @@ def lauf(
                 genannt = als_zahl(stelle.get("zeile"))
                 zit = stelle.get("zitat")
                 klasse = str(antwort.get("fehlerklasse", "")).strip()
-            pruefung = bewerte_zeile(genannt, fall, zit)
-            zeilen.append(
-                {
-                    "Fall": f"{fall['projekt']}/{fall['nummer']}",
-                    "Runde": runde,
-                    "Klasse": klasse,
-                    "erwartet": erwartet,
-                    "Klasse Treffer": klasse == erwartet,
-                    "genannt": pruefung["zeile"],
-                    "Abstand": pruefung["abstand"],
-                    "exakt Nr.": pruefung["exakt"],
-                    "nah Nr.": pruefung["nah"],
-                    "exakt Zitat": pruefung["exakt_zitat"],
-                    "JSON": antwort is not None,
-                    "Zahlen": zahlen["gueltig"],
-                    "Eingabe": nutzung.get("prompt_tokens"),
-                    "Ausgabe": nutzung.get("completion_tokens"),
-                }
-            )
+                pruefung = bewerte_zeile(genannt, fall, zit)
+                if protokoll is not None:
+                    protokoll.write(
+                        json.dumps(
+                            {
+                                "projekt": fall["projekt"],
+                                "nummer": fall["nummer"],
+                                "methode": fall["methode"],
+                                "datei": fall.get("datei", ""),
+                                "umgebung": umgebung,
+                                "ansicht": ansicht,
+                                "kontrolle": kontrolle,
+                                "runde": runde,
+                                "modell": modell,
+                                "erwartete_klasse": erwartet,
+                                "messwerte": berechnung["messwerte"],
+                                "erklaerung": score_erklaerung(
+                                    fall["methode"], umgebung, berechnung
+                                ),
+                                "anzeige": anzeigeentscheidung(
+                                    berechnung, klasse, genannt
+                                ),
+                                "kernzeilen": fall["kernzeilen"],
+                                "geaenderte_zeilen": fall["geaenderte_zeilen"],
+                                "pruefung": pruefung,
+                                "zahlenpruefung": zahlen,
+                                "antwort": antwort,
+                                "rohtext": text,
+                                "token": {
+                                    "eingabe": nutzung.get("prompt_tokens"),
+                                    "ausgabe": nutzung.get("completion_tokens"),
+                                },
+                            },
+                            ensure_ascii=False,
+                        )
+                        + "\n"
+                    )
+                zeilen.append(
+                    {
+                        "Fall": f"{fall['projekt']}/{fall['nummer']}",
+                        "Runde": runde,
+                        "Klasse": klasse,
+                        "erwartet": erwartet,
+                        "Klasse Treffer": klasse == erwartet,
+                        "genannt": pruefung["zeile"],
+                        "Abstand": pruefung["abstand"],
+                        "exakt Nr.": pruefung["exakt"],
+                        "nah Nr.": pruefung["nah"],
+                        "exakt Zitat": pruefung["exakt_zitat"],
+                        "JSON": antwort is not None,
+                        "Zahlen": zahlen["gueltig"],
+                        "Eingabe": nutzung.get("prompt_tokens"),
+                        "Ausgabe": nutzung.get("completion_tokens"),
+                    }
+                )
+    if protokoll is not None:
+        protokoll.close()
     tabelle = pd.DataFrame(zeilen)
+
     print(
         f"Ansicht: {ansicht} | Wiederholungen: {wiederholungen} | Fälle je Runde: {len(faelle)}"
     )
@@ -621,6 +664,7 @@ def main():
     parser.add_argument("--antwort")
     parser.add_argument("--rohdaten")
     parser.add_argument("--varianten")
+    parser.add_argument("--antwortdatei")
     args = parser.parse_args()
 
     if args.rohdaten:
@@ -640,6 +684,7 @@ def main():
             args.ansicht,
             args.wiederholungen,
             args.kontrolle,
+            args.antwortdatei,
         )
         return
 
