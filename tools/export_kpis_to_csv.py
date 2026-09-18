@@ -20,6 +20,7 @@ OUT_DIR = (
 )
 COLUMNS = [
     "variant",
+    "messung",
     "env",
     "source",
     "avg_latency_ms",
@@ -29,6 +30,7 @@ COLUMNS = [
     "target_method",
     "total_failures",
     "total_requests",
+    "gemessen_am",
 ]
 ENV_ORDER = ["low", "medium", "high", "extreme", "prod"]
 
@@ -42,15 +44,28 @@ def _run_aws(args):
     )
 
 
+def _zerlege_schluessel(rel_path):
+    teile = rel_path.parts[:-1]
+    if len(teile) == 4:
+        variant, messung, method, env = teile
+    elif len(teile) == 3:
+        variant, method, env = teile
+        messung = "basis"
+    else:
+        raise ValueError(f"Unerwarteter Schluessel: {rel_path}")
+    return variant, messung, method, env
+
+
 def _parse_metrics_file(abs_path, rel_path):
-    parts = rel_path.parts
-    variant = parts[0]
-    method = parts[1]
-    env = parts[2]
+    variant, messung, method, env = _zerlege_schluessel(rel_path)
     with open(abs_path, encoding="utf-8") as fh:
         payload = json.load(fh)
+    gemessen = datetime.datetime.fromtimestamp(
+        abs_path.stat().st_mtime, tz=datetime.timezone.utc
+    )
     return {
         "variant": variant,
+        "messung": messung,
         "env": env,
         "source": str(rel_path),
         "target_method": method,
@@ -60,6 +75,7 @@ def _parse_metrics_file(abs_path, rel_path):
         "error_rate_percent": payload.get("error_rate_percent"),
         "total_failures": payload.get("total_failures"),
         "total_requests": payload.get("total_requests"),
+        "gemessen_am": gemessen.isoformat(timespec="seconds"),
     }
 
 
@@ -91,7 +107,9 @@ def main():
                     rows.append(_parse_metrics_file(full, rel))
         df = pd.DataFrame(rows, columns=COLUMNS)
         df["env"] = pd.Categorical(df["env"], categories=ENV_ORDER, ordered=True)
-        df = df.sort_values(["variant", "target_method", "env"]).reset_index(drop=True)
+        df = df.sort_values(["variant", "target_method", "env", "messung"]).reset_index(
+            drop=True
+        )
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         out_csv = OUT_DIR / f"all_projects_kpis_{timestamp}.csv"
         new_csv = OUT_DIR / "all_projects_kpis_new.csv"
@@ -102,6 +120,9 @@ def main():
         print(f"Referenz aktualisiert: {new_csv}")
         print(f"Zeilen: {len(df)}")
         print(df["variant"].value_counts().sort_index().to_string())
+        print()
+        print("Messungen je Variante:")
+        print(df.groupby(["variant", "messung"], observed=True).size().to_string())
     finally:
         shutil.rmtree(dump_dir, ignore_errors=True)
 

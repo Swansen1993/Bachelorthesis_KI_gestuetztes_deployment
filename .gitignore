@@ -15,7 +15,7 @@ terraform/DEPLOYMENT_HANDBUCH.md
 /PROJEKTHANDBUCH.md
 /PROJEKTSTAND.md
 /ml/QUELLEN.md
-/ml/quellen2.md
+/ml/quellen*.md
 /export_kpis/
 /variants/*/kpis.csv
 /variants/*/dataset.jsonl
@@ -23,3 +23,6 @@ terraform/DEPLOYMENT_HANDBUCH.md
 # Variante-A-Vorlagen (lokal, nicht versionieren)
 /VARIANTE_A_TEMPLATE.md
 /project.yaml.example
+__pycache__/
+*.pyc
+TODO.md
