@@ -61,8 +61,8 @@ def _parse_metrics_file(abs_path, rel_path):
     with open(abs_path, encoding="utf-8") as fh:
         payload = json.load(fh)
     gemessen = datetime.datetime.fromtimestamp(
-        abs_path.stat().st_mtime, tz=datetime.timezone.utc
-    )
+        abs_path.stat().st_mtime
+    ).astimezone()
     return {
         "variant": variant,
         "messung": messung,

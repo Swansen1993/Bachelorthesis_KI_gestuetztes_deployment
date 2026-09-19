@@ -1,9 +1,9 @@
 name: Github Actions Pipeline
 on:
-  push:
-    branches:
-      - "test/P*"
-  workflow_dispatch:
+  #  push:
+  #   branches:
+  #    - "test/P*"
+  workflow_dispatch: # Workflow dispatch bleibt stehen, es wird zwar nicht aktiv genutzt aber dient als Auslöser der Paramter entgegennehmen kann. So entstehen in den inputs variant Paramter keine (kosmetischen) Fehlermeldungen
     inputs:
       variant:
         description: Welche Variante soll laufen?
@@ -32,7 +32,7 @@ env:
   ROLE_TO_ASSUME: arn:aws:iam::415221799955:role/github_worklow_aws
   ECR_APP_REPO: app-repo
   ECR_LOCUST_REPO: locust-repo
-  VARIANT_ID: ${{ inputs.variant || 'P01' }}
+  VARIANT_ID: ${{ inputs.variant || 'P01' }} #
   VARIANT_PATH: ${{ inputs.variant || 'P01' }}
   TF_VAR_db_username: ${{ secrets.DB_USERNAME }}
   TF_VAR_db_name: ${{ secrets.DB_NAME }}
@@ -103,7 +103,7 @@ jobs:
       - name: Zeitmessung
         id: zeitmessung
         run: |-
-          MESSUNG=$(date -u +%Y-%m-%d_%H%M)
+          MESSUNG=$(TZ=Europe/Berlin date +%Y-%m-%d_%H%M)
           echo "MESSUNG=$MESSUNG" >> "$GITHUB_ENV"
           echo "zeitmessung=$MESSUNG" >> "$GITHUB_OUTPUT"
 
@@ -113,13 +113,6 @@ jobs:
             echo "KPI_PREFIX=${VARIANT_ID}_neg/${MESSUNG}" >> "$GITHUB_ENV"
           else
             echo "KPI_PREFIX=${VARIANT_ID}/${MESSUNG}" >> "$GITHUB_ENV"
-          fi
-      - name: Alte KPIs dieser Variante loeschen (nur Positiv-Modus)
-        run: |-
-          if [ "${{ env.NEGATIV_KAMPAGNE }}" != "true" ]; then
-            aws s3 rm "s3://kpi-save-bucket-415221799955-eu-central-1-an/${KPI_PREFIX}/" --recursive
-          else
-            echo "Negativ-Kampagne aktiv: Kein Loeschen, damit KPIs anderer Mutationen erhalten bleiben"
           fi
       - name: Setup-Terraform
         uses: hashicorp/setup-terraform@v3
@@ -285,5 +278,3 @@ jobs:
             -var="app_image_uri=dummy" \
             -var="locust_image_uri=dummy" \
             -var="variant_id=${VARIANT_ID}"
-      - name: Hinweis - Teardown deaktiviert (Negativ-Kampagne)
-        run: echo "Teardown deaktiviert - Infrastruktur bleibt fuer die naechste Mutation stehen"
