@@ -21,6 +21,7 @@ OUT_DIR = (
 )
 COLUMNS = [
     "variant",
+    "messung",
     "env",
     "source",
     "avg_latency_ms",
@@ -45,13 +46,18 @@ def _run_aws(args):
 
 def _parse_metrics_file(abs_path, rel_path):
     parts = rel_path.parts
-    variant = parts[0]
-    method = parts[1]
-    env = parts[2]
+    if len(parts) == 4:
+        variant, method, env = parts[0], parts[1], parts[2]
+        messung = "basis"
+    elif len(parts) == 5:
+        variant, messung, method, env = parts[0], parts[1], parts[2], parts[3]
+    else:
+        raise ValueError(f"Unbekannte Ablageform: {rel_path}")
     with open(abs_path, encoding="utf-8") as fh:
         payload = json.load(fh)
     return {
         "variant": variant,
+        "messung": messung,
         "env": env,
         "source": str(rel_path),
         "target_method": method,
@@ -102,6 +108,8 @@ def _merge_with_reference(df, pattern, reference_csv):
     if not pattern or not reference_csv.exists():
         return df
     existing = pd.read_csv(reference_csv)
+    if "messung" not in existing.columns:
+        existing["messung"] = "basis"
     keep = ~existing["target_method"].str.contains(pattern, regex=True)
     return pd.concat([existing.loc[keep, COLUMNS], df[COLUMNS]], ignore_index=True)
 
@@ -124,7 +132,9 @@ def main():
         df = pd.DataFrame(_collect_rows(dump_dir), columns=COLUMNS)
         df = _merge_with_reference(df, pattern, new_csv)
         df["env"] = pd.Categorical(df["env"], categories=ENV_ORDER, ordered=True)
-        df = df.sort_values(["variant", "target_method", "env"]).reset_index(drop=True)
+        df = df.sort_values(["variant", "messung", "target_method", "env"]).reset_index(
+            drop=True
+        )
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         out_csv = OUT_DIR / f"all_projects_kpis_{timestamp}.csv"
         OUT_DIR.mkdir(parents=True, exist_ok=True)

@@ -1,8 +1,8 @@
 name: Github Actions Pipeline
 on:
-  push:
-    branches:
-      - "test/P*"
+  #push:
+  # branches:
+  #  - "test/P*"
   workflow_dispatch:
     inputs:
       variant:
@@ -81,6 +81,8 @@ jobs:
   Deploy:
     runs-on: ubuntu-latest
     needs: Build-and-Push
+    outputs:
+      zeitmessung: ${{ steps.zeitmessung.outputs.zeitmessung }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -99,26 +101,22 @@ jobs:
       - name: Login to aws_ecr
         uses: aws-actions/amazon-ecr-login@v2
         id: login-ecr
+
+      - name: Zeitmessung
+        id: zeitmessung
+        run: |-
+          MESSUNG=$(TZ=Europe/Berlin date +%Y-%m-%d_%H%M)
+          echo "MESSUNG=$MESSUNG" >> "$GITHUB_ENV"
+          echo "zeitmessung=$MESSUNG" >> "$GITHUB_OUTPUT"
+
       - name: KPI-Prefix festlegen (positiv/negativ)
         run: |-
           if [ "${{ env.NEGATIV_KAMPAGNE }}" = "true" ]; then
-            echo "KPI_PREFIX=${VARIANT_ID}_neg" >> "$GITHUB_ENV"
+            echo "KPI_PREFIX=${VARIANT_ID}_neg/${MESSUNG}" >> "$GITHUB_ENV"
           else
-            echo "KPI_PREFIX=${VARIANT_ID}" >> "$GITHUB_ENV"
+            echo "KPI_PREFIX=${VARIANT_ID}/${MESSUNG}" >> "$GITHUB_ENV"
           fi
-      - name: Messdateien des geplanten Tests gezielt ersetzen (kein Ordner-Loeschen)
-        run: |-
-          VARPATH="variants/${VARIANT_ID}/tests.json"
-          if [ ! -f "$VARPATH" ]; then VARPATH="terraform/tests/benchmark/tests.json"; fi
-          METHODS=$(python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(' '.join(v for k,v in d.items() if k.startswith('Locust-Test')))" "$VARPATH")
-          for M in $METHODS; do
-            for ENV in low medium high extreme prod; do
-              KEY="s3://kpi-save-bucket-415221799955-eu-central-1-an/${KPI_PREFIX}/${M}/${ENV}/${M}_${ENV}_metrics.json"
-              aws s3 rm "$KEY" 2>/dev/null || true
-              echo "wird neu geschrieben: ${KPI_PREFIX}/${M}/${ENV}/${M}_${ENV}_metrics.json"
-            done
-          done
-          echo "Nur die Messdateien der geplanten Tests wurden entfernt; alle anderen Methoden und Dateien bleiben erhalten."
+
       - name: Setup-Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -158,13 +156,6 @@ jobs:
             echo "VARIANT_ID=${VARIANT}" >> "$GITHUB_ENV"
             echo "VARIANT_PATH=${VARIANT}" >> "$GITHUB_ENV"
           fi
-      - id: read
-        name: Tests aus tests.json lesen
-        run: |-
-          VARPATH="variants/${VARIANT_ID}/tests.json"
-          if [ ! -f "$VARPATH" ]; then VARPATH="terraform/tests/benchmark/tests.json"; fi
-          TESTS=$(python3 -c "import json,sys;print(json.dumps([k for k in json.load(open(sys.argv[1])) if k.startswith('Locust-Test')]))" "$VARPATH")
-          echo "tests=${TESTS}" >> "$GITHUB_OUTPUT"
   Locust-Runner:
     runs-on: ubuntu-latest
     needs:
@@ -195,12 +186,16 @@ jobs:
         with:
           name: environment_infos
           path: /tmp/infra
+
+      - name: Zeitmessung uebernehmen
+        run: echo "MESSUNG=${{ needs.Deploy.outputs.zeitmessung }}" >> "$GITHUB_ENV"
+
       - name: KPI-Prefix festlegen (positiv/negativ)
         run: |-
           if [ "${{ env.NEGATIV_KAMPAGNE }}" = "true" ]; then
-            echo "KPI_PREFIX=${VARIANT_ID}_neg" >> "$GITHUB_ENV"
+            echo "KPI_PREFIX=${VARIANT_ID}_neg/${MESSUNG}" >> "$GITHUB_ENV"
           else
-            echo "KPI_PREFIX=${VARIANT_ID}" >> "$GITHUB_ENV"
+            echo "KPI_PREFIX=${VARIANT_ID}/${MESSUNG}" >> "$GITHUB_ENV"
           fi
       - name: Benchmark ${{ matrix.test }} (alle Umgebungen parallel)
         run: |-
@@ -210,7 +205,9 @@ jobs:
             --variant "${KPI_PREFIX}"
   KPI-Export:
     runs-on: ubuntu-latest
-    needs: Locust-Runner
+    needs:
+      - Deploy
+      - Locust-Runner
     if: always()
     steps:
       - name: Checkout Code
@@ -227,12 +224,15 @@ jobs:
         with:
           aws-region: ${{env.AWS_REGION}}
           role-to-assume: ${{env.ROLE_TO_ASSUME}}
+      - name: Zeitmessung uebernehmen
+        run: echo "MESSUNG=${{ needs.Deploy.outputs.zeitmessung }}" >> "$GITHUB_ENV"
+
       - name: KPI-Prefix festlegen (positiv/negativ)
         run: |-
           if [ "${{ env.NEGATIV_KAMPAGNE }}" = "true" ]; then
-            echo "KPI_PREFIX=${VARIANT_ID}_neg" >> "$GITHUB_ENV"
+            echo "KPI_PREFIX=${VARIANT_ID}_neg/${MESSUNG}" >> "$GITHUB_ENV"
           else
-            echo  "KPI_PREFIX=${VARIANT_ID}" >> "$GITHUB_ENV"
+            echo "KPI_PREFIX=${VARIANT_ID}/${MESSUNG}" >> "$GITHUB_ENV"
           fi
       - name: KPI-Export (CSV + JSONL)
         run: python3 tools/export_training_data.py --variant $KPI_PREFIX --out variants/$VARIANT_PATH
@@ -243,7 +243,9 @@ jobs:
           path: variants/$VARIANT_PATH
   Agent-Lauf:
     runs-on: ubuntu-latest
-    needs: KPI-Export
+    needs:
+      - Deploy
+      - KPI-Export
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -259,12 +261,15 @@ jobs:
         with:
           aws-region: ${{env.AWS_REGION}}
           role-to-assume: ${{env.ROLE_TO_ASSUME}}
+      - name: Zeitmessung uebernehmen
+        run: echo "MESSUNG=${{ needs.Deploy.outputs.zeitmessung }}" >> "$GITHUB_ENV"
+
       - name: KPI-Prefix festlegen (positiv/negativ)
         run: |-
           if [ "${{ env.NEGATIV_KAMPAGNE }}" = "true" ]; then
-            echo "KPI_PREFIX=${VARIANT_ID}_neg" >> "$GITHUB_ENV"
+            echo "KPI_PREFIX=${VARIANT_ID}_neg/${MESSUNG}" >> "$GITHUB_ENV"
           else
-            echo "KPI_PREFIX=${VARIANT_ID}" >> "$GITHUB_ENV"
+            echo "KPI_PREFIX=${VARIANT_ID}/${MESSUNG}" >> "$GITHUB_ENV"
           fi
       - name: Python-Abhaengigkeiten fuer den Harness
         run: python3 -m pip install --quiet "boto3>=1.34" "pandas>=2"
@@ -335,16 +340,12 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.5.0
-      # Terraform Destroy ist waehrend der Negativ-Kampagne AUSKOMMENTIERT,
-      # damit die Infrastruktur zwischen den Mutanten-Laeufen stehen bleibt.
-      # Nach Abschluss der Kampagne wieder aktivieren (Kommentar entfernen).
-      # - name: Terraform Destroy (Aufraeumen nach Lauf)
-      #   working-directory: ./terraform
-      #   run: |-
-      #     terraform init -backend-config="key=${VARIANT_PATH}/state.tfstate"
-      #     terraform destroy -auto-approve -input=false \
-      #       -var="app_image_uri=dummy" \
-      #       -var="locust_image_uri=dummy" \
-      #       -var="variant_id=${VARIANT_ID}"
-      - name: Hinweis - Teardown deaktiviert (Negativ-Kampagne)
-        run: echo "Teardown deaktiviert - Infrastruktur bleibt fuer die naechste Mutation stehen"
+
+      - name: Terraform Destroy (Aufraeumen nach Lauf)
+        working-directory: ./terraform
+        run: |-
+          terraform init -backend-config="key=${VARIANT_PATH}/state.tfstate"
+          terraform destroy -auto-approve -input=false \
+            -var="app_image_uri=dummy" \
+            -var="locust_image_uri=dummy" \
+            -var="variant_id=${VARIANT_ID}"
