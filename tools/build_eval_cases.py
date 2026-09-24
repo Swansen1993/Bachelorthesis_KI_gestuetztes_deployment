@@ -8,7 +8,6 @@ ROOT = pathlib.Path(
 sys.path.insert(0, str(ROOT / "prototype"))
 
 from harness import (
-    KLASSENZUORDNUNG,
     antipattern_angabe,
     bewerte,
     lade_hilfsdaten,
@@ -84,7 +83,6 @@ def baue_eval_faelle():
                 "geaenderte_zeilen": geaendert,
                 "kernzeilen": kern,
                 "antipattern_dokumentiert": antipattern_angabe(mutiert["snippet"]),
-                "fehlerklasse": KLASSENZUORDNUNG.get((projekt, nummer), "unbekannt"),
                 "zeilen_gesamt": len(alle),
             }
         )

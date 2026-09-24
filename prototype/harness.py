@@ -39,34 +39,6 @@ PUNKTE_IN_SCHLEIFE = 2
 MARKE_FEHLER = re.compile(r"#\s*FEHLER", re.IGNORECASE)
 NAEHE = 5
 
-KLASSENZUORDNUNG = {
-    ("P01", "002"): "1",
-    ("P06", "052"): "1",
-    ("P09", "069"): "4",
-    ("P01", "010"): "2",
-    ("P01", "011"): "2",
-    ("P10", "079"): "2",
-    ("P11", "088"): "2",
-    ("P01", "008"): "3",
-    ("P01", "012"): "3",
-    ("P01", "019"): "3",
-    ("P04", "032"): "3",
-    ("P05", "035"): "4",
-    ("P09", "072"): "4",
-    ("P11", "086"): "4",
-    ("P06", "048"): "5",
-    ("P07", "058"): "5",
-    ("P12", "098"): "4",
-    ("P12", "099"): "1",
-    ("P12", "105"): "3",
-    ("P13", "110"): "1",
-    ("P13", "111"): "2",
-    ("P13", "112"): "1",
-    ("P13", "117"): "1",
-    ("P13", "121"): "4",
-    ("P13", "126"): "2",
-}
-
 
 def bereinigte_zeilennummern(rohtext):
     zeilen = rohtext.splitlines()
@@ -174,6 +146,7 @@ SYSTEM_PROMPT = """Du bist ein KI-Agent zur Bewertung der Stabilität von Code-�
 3. Benenne als Hauptursache genau das Kriterium mit dem größten Punktverlust und belege es mit den Zahlen. Erkläre den Punktwert außerdem anhand der Beiträge der Kriterien, also Punkte mal Gewicht. Enthält die Bewertung Hinweise, führe sie an – insbesondere den Hinweis, dass ein Latenzanstieg unter der Mindestabweichung liegt und das Kriterium deshalb als unauffällig gilt.
 4. Wenn die Fehlerquote auffällt, führe sie als Lastphänomen auf, nicht als Fehler der Änderung.
 5. Nenne genau eine Codezeile als Ursache, und zwar eine, die im übergebenen Ausschnitt steht. Gib dazu die Zeilennummer und den vollständigen Wortlaut dieser Zeile an. Zeigt der Ausschnitt keine Auffälligkeit, lass `codestelle` leer und erfinde keinen Fehler.
+6. Die Nachricht kann eine Modell-Einschätzung enthalten (LightGBM, mit Beiträgen je Kennzahl). Nutze sie als Erklärungshilfe für den abweichenden Score, nicht als Messwert, und halte sie begrifflich vom Punktwert der Matrix getrennt.
 
 Vorgehen: Analysiere zuerst in zwei bis drei Sätzen, welcher Mechanismus den gemessenen Effekt erklärt. Prüfe dabei, welche Zeilen gegenüber dem unveränderten Code neu sind, und benenne die Zeile, die diesen Mechanismus trägt. Gib erst danach das JSON aus:
 
@@ -228,7 +201,6 @@ def baue_faelle():
                 "geaenderte_zeilen": geaendert,
                 "kernzeilen": kern,
                 "antipattern_dokumentiert": metadaten.get("antipattern", ""),
-                "fehlerklasse": KLASSENZUORDNUNG.get((projekt, nummer), "unbekannt"),
                 "zeilen_gesamt": len(alle),
             }
         )
@@ -400,7 +372,7 @@ def anzeigeentscheidung(berechnung, zeile=None):
     }
 
 
-def baue_nachricht(fall, berechnung, ansicht="voll", snippet=None):
+def baue_nachricht(fall, berechnung, ansicht="voll", snippet=None, vorhersage=None):
     ausschnittstext = fall["snippet"] if snippet is None else snippet
     if ansicht == "diff":
         ausschnitt = mit_zeilennummern(ausschnittstext, fall["geaenderte_zeilen"])
@@ -410,34 +382,33 @@ def baue_nachricht(fall, berechnung, ansicht="voll", snippet=None):
         hinweis = (
             "Der Ausschnitt zeigt die vollständige Methode; nicht alle Zeilen sind neu."
         )
-    return json.dumps(
-        {
-            "methode": fall["methode"],
-            "datei": fall.get("datei", ""),
-            "umgebungsstufe": berechnung["umgebung"],
-            "gemessene_werte": berechnung["messwerte"],
-            "berechnete_bewertung": {
-                "score_prozent": berechnung["score_prozent"],
-                "einstufung": berechnung["einstufung"],
-                "kriterien": berechnung["kriterien"],
-                "hauptursache": berechnung["hauptursache"],
-                "rechenweg": [
-                    {
-                        "kriterium": k["name"],
-                        "gewicht": k["gewicht"],
-                        "punkte": k["punkte"],
-                        "beitrag_zum_punktwert": round(k["punkte"] * k["gewicht"], 2),
-                    }
-                    for k in berechnung["kriterien"]
-                ],
-                "hinweise": berechnung["hinweise"],
-            },
-            "aenderungsausschnitt_mit_zeilennummern": ausschnitt,
-            "hinweis_zum_ausschnitt": hinweis,
+    nachricht = {
+        "methode": fall["methode"],
+        "datei": fall.get("datei", ""),
+        "umgebungsstufe": berechnung["umgebung"],
+        "gemessene_werte": berechnung["messwerte"],
+        "berechnete_bewertung": {
+            "score_prozent": berechnung["score_prozent"],
+            "einstufung": berechnung["einstufung"],
+            "kriterien": berechnung["kriterien"],
+            "hauptursache": berechnung["hauptursache"],
+            "rechenweg": [
+                {
+                    "kriterium": k["name"],
+                    "gewicht": k["gewicht"],
+                    "punkte": k["punkte"],
+                    "beitrag_zum_punktwert": round(k["punkte"] * k["gewicht"], 2),
+                }
+                for k in berechnung["kriterien"]
+            ],
+            "hinweise": berechnung["hinweise"],
         },
-        ensure_ascii=False,
-        indent=2,
-    )
+        "aenderungsausschnitt_mit_zeilennummern": ausschnitt,
+        "hinweis_zum_ausschnitt": hinweis,
+    }
+    if vorhersage is not None:
+        nachricht["modellvorhersage"] = vorhersage
+    return json.dumps(nachricht, ensure_ascii=False, indent=2)
 
 
 def pruefe_zahlen(antwort, berechnung):
@@ -524,12 +495,18 @@ def lauf(
     for fall, ist_kontrolle in auftraege:
         if ist_kontrolle:
             berechnung = berechnung_fuer(fall["methode"], umgebung, negativ=False)
+            vorhersage = erklaere_kpi(berechnung["messwerte"])
             nachricht = baue_nachricht(
-                fall, berechnung, "voll", snippet=fall["snippet_original"]
+                fall,
+                berechnung,
+                "voll",
+                snippet=fall["snippet_original"],
+                vorhersage=vorhersage,
             )
         else:
             berechnung = berechnung_fuer(fall["methode"], umgebung)
-            nachricht = baue_nachricht(fall, berechnung, ansicht)
+            vorhersage = erklaere_kpi(berechnung["messwerte"])
+            nachricht = baue_nachricht(fall, berechnung, ansicht, vorhersage=vorhersage)
         for runde in range(1, wiederholungen + 1):
             text, nutzung = rufe_modell(nachricht, modell, max_tokens)
             antwort = json_aus_text(text)
@@ -556,9 +533,7 @@ def lauf(
                                 "runde": runde,
                                 "modell": modell,
                                 "messwerte": berechnung["messwerte"],
-                                "modellvorhersage": erklaere_kpi(
-                                    berechnung["messwerte"]
-                                ),
+                                "modellvorhersage": vorhersage,
                                 "erklaerung": score_erklaerung(
                                     fall["methode"], umgebung, berechnung
                                 ),
