@@ -11,6 +11,7 @@ MODULORDNER = pathlib.Path(__file__).resolve().parent
 PROJEKTORDNER = MODULORDNER.parent
 sys.path.insert(0, str(MODULORDNER))
 
+from modell_shap import erklaere_kpi
 from scoring import GEWICHTE, SCHWELLE_STABIL, UMGEBUNGEN, bewerte, lade_hilfsdaten
 
 REGION = "eu-central-1"
@@ -383,6 +384,7 @@ def score_erklaerung(methode, umgebung, berechnung, negativ=True):
         "punktwert": berechnung["score_prozent"],
         "einstufung": berechnung["einstufung"],
         "hinweise": berechnung["hinweise"],
+        "hauptursache": berechnung["hauptursache"],
         "umgebungen": umgebungsuebersicht(methode, negativ),
     }
 
@@ -456,6 +458,11 @@ def pruefe_zahlen(antwort, berechnung):
     }
 
 
+def begruendung_aus_text(text):
+    stelle = text.find("{")
+    return text[:stelle].strip() if stelle >= 0 else text.strip()
+
+
 def als_zahl(wert):
     if isinstance(wert, str) and wert.strip().isdigit():
         return int(wert.strip())
@@ -510,6 +517,7 @@ def lauf(
     wiederholungen=1,
     kontrolle=False,
     antwortdatei=None,
+    auch_gesund=False,
 ):
     faelle = lade_faelle()
     if not faelle:
@@ -523,8 +531,12 @@ def lauf(
 
     zeilen = []
 
-    for fall in faelle:
-        if kontrolle:
+    auftraege = [(fall, kontrolle) for fall in faelle]
+    if auch_gesund and not kontrolle:
+        auftraege = [(fall, wert) for fall in faelle for wert in (False, True)]
+
+    for fall, ist_kontrolle in auftraege:
+        if ist_kontrolle:
             berechnung = berechnung_fuer(fall["methode"], umgebung, negativ=False)
             nachricht = baue_nachricht(
                 fall, berechnung, "voll", snippet=fall["snippet_original"]
@@ -557,11 +569,14 @@ def lauf(
                                 "datei": fall.get("datei", ""),
                                 "umgebung": umgebung,
                                 "ansicht": ansicht,
-                                "kontrolle": kontrolle,
+                                "kontrolle": ist_kontrolle,
                                 "runde": runde,
                                 "modell": modell,
                                 "erwartete_klasse": erwartet,
                                 "messwerte": berechnung["messwerte"],
+                                "modellvorhersage": erklaere_kpi(
+                                    berechnung["messwerte"]
+                                ),
                                 "erklaerung": score_erklaerung(
                                     fall["methode"], umgebung, berechnung
                                 ),
@@ -573,6 +588,19 @@ def lauf(
                                 "pruefung": pruefung,
                                 "zahlenpruefung": zahlen,
                                 "antwort": antwort,
+                                "begruendung": begruendung_aus_text(text),
+                                "ausschnitt": mit_zeilennummern(
+                                    (
+                                        fall["snippet_original"]
+                                        if kontrolle
+                                        else fall["snippet"]
+                                    ),
+                                    (
+                                        None
+                                        if (kontrolle or ansicht == "voll")
+                                        else fall["geaenderte_zeilen"]
+                                    ),
+                                ),
                                 "rohtext": text,
                                 "token": {
                                     "eingabe": nutzung.get("prompt_tokens"),
@@ -658,6 +686,7 @@ def main():
     parser.add_argument("--ansicht", choices=["voll", "diff"], default="voll")
     parser.add_argument("--wiederholungen", type=int, default=1)
     parser.add_argument("--kontrolle", action="store_true")
+    parser.add_argument("--auch-gesund", action="store_true")
     parser.add_argument("--erklaerung", action="store_true")
     parser.add_argument("--nummer")
     parser.add_argument("--umgebung")
@@ -685,6 +714,7 @@ def main():
             args.wiederholungen,
             args.kontrolle,
             args.antwortdatei,
+            args.auch_gesund,
         )
         return
 
@@ -694,6 +724,7 @@ def main():
         fall = finde_fall(args.nummer)
         berechnung = berechnung_fuer(fall["methode"], args.umgebung)
         erklaerung = score_erklaerung(fall["methode"], args.umgebung, berechnung)
+        erklaerung["modellvorhersage"] = erklaere_kpi(berechnung["messwerte"])
         erklaerung["anzeige"] = anzeigeentscheidung(
             berechnung, fall["fehlerklasse"], (fall["kernzeilen"] or [None])[0]
         )
