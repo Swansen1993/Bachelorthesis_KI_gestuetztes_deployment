@@ -30,6 +30,7 @@ permissions:
 env:
   AWS_REGION: eu-central-1
   ROLE_TO_ASSUME: arn:aws:iam::415221799955:role/github_worklow_aws
+  KPI_BUCKET: kpi-save-bucket-415221799955-eu-central-1-an
   ECR_APP_REPO: app-repo
   ECR_LOCUST_REPO: locust-repo
   VARIANT_ID: ${{ inputs.variant || 'P01' }}
@@ -272,7 +273,9 @@ jobs:
             echo "KPI_PREFIX=${VARIANT_ID}/${MESSUNG}" >> "$GITHUB_ENV"
           fi
       - name: Python-Abhaengigkeiten fuer den Harness
-        run: python3 -m pip install --quiet "boto3>=1.34" "pandas>=2"
+        run: |-
+          python3 -m pip install --quiet \
+            "boto3>=1.34" "pandas>=2" "scikit-learn>=1.3" "lightgbm>=4" "shap>=0.44"
       - name: Messdaten beider Seiten ziehen
         run: |-
           ORDNER_NEG="snippets_evaluation_neg"
@@ -284,9 +287,12 @@ jobs:
           mkdir -p agent_lauf
           cat /tmp/export_pos/dataset.jsonl /tmp/export_neg/dataset.jsonl > agent_lauf/dataset.jsonl
           echo "Messzeilen fuer den Harness: $(grep -c . agent_lauf/dataset.jsonl)"
+      - name: KPI-CSV im Runner erzeugen
+        run: python3 tools/import_nach_lauf.py
       - name: Agenten-Lauf (Harness)
         shell: bash
         run: |-
+          set -o pipefail
           for U in $AGENT_UMGEBUNGEN; do
             for BEDINGUNG in diff voll kontrolle; do
               ZUSATZ="--ansicht diff"
@@ -305,6 +311,7 @@ jobs:
                 --modell "$AGENT_MODELL" \
                 --max-tokens 1000 \
                 --wiederholungen "$AGENT_WIEDERHOLUNGEN" \
+                --antwortdatei "agent_lauf/${MESSUNG}_${U}_${BEDINGUNG}.jsonl" \
                 $ZUSATZ | tee -a "$DATEI"
             done
           done
@@ -315,6 +322,11 @@ jobs:
           name: agent-lauf
           path: agent_lauf
           retention-days: 14
+      - name: Protokolle in den Bucket legen
+        if: always()
+        run: |-
+          aws s3 cp agent_lauf/ "s3://${KPI_BUCKET}/protokolle/" \
+            --recursive --exclude "*" --include "*.jsonl"
   Teardown:
     runs-on: ubuntu-latest
     needs:

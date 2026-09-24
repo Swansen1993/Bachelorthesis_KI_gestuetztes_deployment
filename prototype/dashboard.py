@@ -1,11 +1,20 @@
+import contextlib
+import datetime
+import io
 import json
 import pathlib
+import sys
+import time
 
 import altair as alt
 import pandas as pd
 import streamlit as st
 
 MODULORDNER = pathlib.Path(__file__).resolve().parent
+TOOLSORDNER = MODULORDNER.parent / "tools"
+sys.path.insert(0, str(TOOLSORDNER))
+import import_nach_lauf as importer
+
 FARBE_INSTABIL = "#c0392b"
 FARBE_STABIL = "#2e7d32"
 FARBE_START = "#7f8c8d"
@@ -304,6 +313,54 @@ def agentenblock(zeile):
         st.json(zeile.get("messwerte") or {})
 
 
+@st.fragment(run_every=2)
+def beobachtungsfenster():
+    faellig = False
+    if st.session_state.pop("pruefen_jetzt", False):
+        faellig = True
+    elif st.session_state.get("beobachten", False):
+        abstand = time.time() - st.session_state.get("letzte_pruefung_ts", 0)
+        faellig = abstand >= st.session_state.get("intervall", 120)
+
+    if faellig:
+        puffer = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(puffer):
+                neu, stand = importer.neue_stempel()
+                if neu:
+                    importer.importiere(neu)
+                    importer.speichere_stand(stand | neu)
+            st.session_state.letzte_pruefung_ts = time.time()
+            st.session_state.letzte_pruefung = datetime.datetime.now().strftime(
+                "%H:%M:%S"
+            )
+            meldungen = [
+                zeile for zeile in puffer.getvalue().splitlines() if zeile.strip()
+            ]
+            if meldungen:
+                st.session_state.meldungen = (meldungen + st.session_state.meldungen)[
+                    :12
+                ]
+            if neu:
+                st.rerun()
+        except Exception as fehler:
+            st.session_state.letzte_pruefung_ts = time.time()
+            st.session_state.letzte_pruefung = datetime.datetime.now().strftime(
+                "%H:%M:%S"
+            )
+            st.session_state.meldungen = (
+                [f"Fehler: {fehler}"] + st.session_state.meldungen
+            )[:12]
+
+    st.caption(
+        ("aktiv" if st.session_state.get("beobachten") else "pausiert")
+        + " | letzte Prüfung: "
+        + (st.session_state.get("letzte_pruefung") or "—")
+    )
+    for meldung in st.session_state.meldungen:
+        st.caption(meldung)
+
+
 st.title("Stabilitätsbewertung der Pipeline")
 
 kandidaten = protokollkandidaten()
@@ -313,6 +370,23 @@ if kandidaten:
     st.sidebar.caption(
         "Gefundene Protokolle:\n\n" + "\n\n".join(p.name for p in kandidaten)
     )
+
+st.session_state.setdefault("beobachten", False)
+st.session_state.setdefault("meldungen", [])
+st.session_state.setdefault("letzte_pruefung", "")
+
+with st.sidebar:
+    st.divider()
+    st.subheader("Beobachtung")
+    st.slider("Intervall (Sekunden)", 30, 600, value=120, step=30, key="intervall")
+    spalten = st.columns(2)
+    if spalten[0].button("Beobachten starten"):
+        st.session_state.beobachten = True
+    if spalten[1].button("Pause"):
+        st.session_state.beobachten = False
+    if st.button("Jetzt prüfen"):
+        st.session_state.pruefen_jetzt = True
+    beobachtungsfenster()
 
 if not eingabe:
     st.info(
