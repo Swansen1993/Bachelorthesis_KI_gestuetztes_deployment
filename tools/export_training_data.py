@@ -67,12 +67,16 @@ def find_snippet_file(snippets_dir, variant, pos):
 
 def extract_meta(key):
     parts = key.split("/")
-    if len(parts) < 4:
+    if len(parts) == 4:
+        variant, method, env = parts[0], parts[1], parts[2]
+        messung = "basis"
+    elif len(parts) == 5:
+        variant, messung, method, env = parts[0], parts[1], parts[2], parts[3]
+    else:
         return None
-    variant, method, env = parts[0], parts[1], parts[2]
     m = re.match(r"pos_(\d{3})", method)
     pos = m.group(1) if m else None
-    return variant, method, env, pos
+    return variant, messung, method, env, pos
 
 
 def main():
@@ -109,7 +113,7 @@ def main():
         meta = extract_meta(key)
         if not meta:
             continue
-        variant, method, env, pos = meta
+        variant, messung, method, env, pos = meta
         try:
             payload = json.loads(fetch_s3_object(args.bucket, key))
         except Exception as exc:
@@ -118,6 +122,7 @@ def main():
 
         row = {
             "variant": variant,
+            "messung": messung,
             "pos": pos or "",
             "method": method,
             "env": env,
@@ -137,6 +142,7 @@ def main():
             json.dumps(
                 {
                     "variant": variant,
+                    "messung": messung,
                     "pos": pos,
                     "method": method,
                     "env": env,

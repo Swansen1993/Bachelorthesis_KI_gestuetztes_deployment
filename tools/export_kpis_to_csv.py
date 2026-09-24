@@ -1,3 +1,4 @@
+import argparse
 import datetime
 import json
 import os
@@ -30,7 +31,6 @@ COLUMNS = [
     "target_method",
     "total_failures",
     "total_requests",
-    "gemessen_am",
 ]
 ENV_ORDER = ["low", "medium", "high", "extreme", "prod"]
 
@@ -44,25 +44,17 @@ def _run_aws(args):
     )
 
 
-def _zerlege_schluessel(rel_path):
-    teile = rel_path.parts[:-1]
-    if len(teile) == 4:
-        variant, messung, method, env = teile
-    elif len(teile) == 3:
-        variant, method, env = teile
-        messung = "basis"
-    else:
-        raise ValueError(f"Unerwarteter Schluessel: {rel_path}")
-    return variant, messung, method, env
-
-
 def _parse_metrics_file(abs_path, rel_path):
-    variant, messung, method, env = _zerlege_schluessel(rel_path)
+    parts = rel_path.parts
+    if len(parts) == 4:
+        variant, method, env = parts[0], parts[1], parts[2]
+        messung = "basis"
+    elif len(parts) == 5:
+        variant, messung, method, env = parts[0], parts[1], parts[2], parts[3]
+    else:
+        raise ValueError(f"Unbekannte Ablageform: {rel_path}")
     with open(abs_path, encoding="utf-8") as fh:
         payload = json.load(fh)
-    gemessen = datetime.datetime.fromtimestamp(
-        abs_path.stat().st_mtime
-    ).astimezone()
     return {
         "variant": variant,
         "messung": messung,
@@ -75,54 +67,90 @@ def _parse_metrics_file(abs_path, rel_path):
         "error_rate_percent": payload.get("error_rate_percent"),
         "total_failures": payload.get("total_failures"),
         "total_requests": payload.get("total_requests"),
-        "gemessen_am": gemessen.isoformat(timespec="seconds"),
     }
 
 
+def _sync_bucket(dump_dir, methods):
+    include_args = ["--include", "*metrics.json"]
+    if methods:
+        include_args = []
+        for method in methods:
+            include_args += ["--include", f"*{method}*metrics.json"]
+    exclude_args = []
+    for prefix in EXCLUDE_PREFIXES:
+        exclude_args += ["--exclude", f"{prefix}*"]
+    _run_aws(
+        [
+            "s3",
+            "sync",
+            f"s3://{BUCKET}/",
+            str(dump_dir),
+            "--exclude",
+            "*",
+            *include_args,
+            *exclude_args,
+        ]
+    )
+
+
+def _collect_rows(dump_dir):
+    rows = []
+    for root, _dirs, files in os.walk(dump_dir):
+        for name in files:
+            if name.endswith("_metrics.json"):
+                full = pathlib.Path(root) / name
+                rel = full.relative_to(dump_dir)
+                rows.append(_parse_metrics_file(full, rel))
+    return rows
+
+
+def _merge_with_reference(df, pattern, reference_csv):
+    if not pattern or not reference_csv.exists():
+        return df
+    existing = pd.read_csv(reference_csv)
+    if "messung" not in existing.columns:
+        existing["messung"] = "basis"
+    keep = ~existing["target_method"].str.contains(pattern, regex=True)
+    return pd.concat([existing.loc[keep, COLUMNS], df[COLUMNS]], ignore_index=True)
+
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--only",
+        nargs="*",
+        default=None,
+        help="Nur Methoden mit diesem Teilstring aus S3 holen und in die bestehende CSV mergen",
+    )
+    args = parser.parse_args()
+    pattern = "|".join(args.only) if args.only else None
+
     dump_dir = pathlib.Path(tempfile.mkdtemp(prefix="kpi_dump_"))
     try:
-        exclude_args = []
-        for prefix in EXCLUDE_PREFIXES:
-            exclude_args += ["--exclude", f"{prefix}*"]
-        _run_aws(
-            [
-                "s3",
-                "sync",
-                f"s3://{BUCKET}/",
-                str(dump_dir),
-                "--exclude",
-                "*",
-                "--include",
-                "*metrics.json",
-                *exclude_args,
-            ]
-        )
-        rows = []
-        for root, _dirs, files in os.walk(dump_dir):
-            for name in files:
-                if name.endswith("_metrics.json"):
-                    full = pathlib.Path(root) / name
-                    rel = full.relative_to(dump_dir)
-                    rows.append(_parse_metrics_file(full, rel))
-        df = pd.DataFrame(rows, columns=COLUMNS)
+        _sync_bucket(dump_dir, args.only)
+        new_csv = OUT_DIR / "all_projects_kpis_new.csv"
+        df = pd.DataFrame(_collect_rows(dump_dir), columns=COLUMNS)
+        df = _merge_with_reference(df, pattern, new_csv)
         df["env"] = pd.Categorical(df["env"], categories=ENV_ORDER, ordered=True)
-        df = df.sort_values(["variant", "target_method", "env", "messung"]).reset_index(
+        df = df.sort_values(["variant", "messung", "target_method", "env"]).reset_index(
             drop=True
         )
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         out_csv = OUT_DIR / f"all_projects_kpis_{timestamp}.csv"
-        new_csv = OUT_DIR / "all_projects_kpis_new.csv"
         OUT_DIR.mkdir(parents=True, exist_ok=True)
         df.to_csv(out_csv, index=False)
         df.to_csv(new_csv, index=False)
         print(f"CSV geschrieben: {out_csv}")
         print(f"Referenz aktualisiert: {new_csv}")
         print(f"Zeilen: {len(df)}")
-        print(df["variant"].value_counts().sort_index().to_string())
-        print()
-        print("Messungen je Variante:")
-        print(df.groupby(["variant", "messung"], observed=True).size().to_string())
+        if pattern:
+            print(
+                df[df["target_method"].str.contains(pattern, regex=True)].to_string(
+                    index=False
+                )
+            )
+        else:
+            print(df["variant"].value_counts().sort_index().to_string())
     finally:
         shutil.rmtree(dump_dir, ignore_errors=True)
 
