@@ -39,14 +39,6 @@ PUNKTE_IN_SCHLEIFE = 2
 MARKE_FEHLER = re.compile(r"#\s*FEHLER", re.IGNORECASE)
 NAEHE = 5
 
-KLASSEN = {
-    "1": "Query DB (N+1, redundante oder fehlende Abfragen)",
-    "2": "CPU (unnötige CPU-Arbeit)",
-    "3": "Blocking/Contention (blockierende Aufrufe, Sperren)",
-    "4": "Speicher/Datenvolumen (zu viel geladen oder gehalten)",
-    "5": "I/O Chatty (viele kleine Schreibvorgänge)",
-}
-
 KLASSENZUORDNUNG = {
     ("P01", "002"): "1",
     ("P06", "052"): "1",
@@ -181,12 +173,11 @@ SYSTEM_PROMPT = """Du bist ein KI-Agent zur Bewertung der Stabilität von Code-�
 2. Vergleiche ausschließlich mit der Referenz derselben Methode und Umgebungsstufe.
 3. Benenne als Hauptursache genau das Kriterium mit dem größten Punktverlust und belege es mit den Zahlen. Erkläre den Punktwert außerdem anhand der Beiträge der Kriterien, also Punkte mal Gewicht. Enthält die Bewertung Hinweise, führe sie an – insbesondere den Hinweis, dass ein Latenzanstieg unter der Mindestabweichung liegt und das Kriterium deshalb als unauffällig gilt.
 4. Wenn die Fehlerquote auffällt, führe sie als Lastphänomen auf, nicht als Fehler der Änderung.
-5. Nenne genau eine Codezeile als Ursache, und zwar eine, die im übergebenen Ausschnitt steht. Gib dazu die Zeilennummer und den vollständigen Wortlaut dieser Zeile an. Wählst du Fehlerklasse 0, lass `codestelle` leer.
-6. Ordne die Änderung genau einer Fehlerklasse zu. Erlaubt sind ausschließlich diese Nummern: 0 = kein Fehler erkennbar, 1 = Query DB (N+1, redundante oder fehlende Abfragen), 2 = CPU (unnötige CPU-Arbeit), 3 = Blocking/Contention (blockierende Aufrufe in asynchronem Code, Sperren), 4 = Speicher/Datenvolumen (zu viel geladen oder gehalten, fehlende Obergrenze, Slicing im Speicher), 5 = I/O Chatty (viele kleine Schreibvorgänge). Wähle 0, wenn der Ausschnitt keine Auffälligkeit zeigt; erfinde keinen Fehler.
+5. Nenne genau eine Codezeile als Ursache, und zwar eine, die im übergebenen Ausschnitt steht. Gib dazu die Zeilennummer und den vollständigen Wortlaut dieser Zeile an. Zeigt der Ausschnitt keine Auffälligkeit, lass `codestelle` leer und erfinde keinen Fehler.
 
 Vorgehen: Analysiere zuerst in zwei bis drei Sätzen, welcher Mechanismus den gemessenen Effekt erklärt. Prüfe dabei, welche Zeilen gegenüber dem unveränderten Code neu sind, und benenne die Zeile, die diesen Mechanismus trägt. Gib erst danach das JSON aus:
 
-{"score_prozent": ..., "kriterien": [{"name": ..., "abweichung_prozent": ..., "punkte": ..., "gewicht": ...}], "modell_wahrscheinlichkeit": ..., "fehlerklasse": "<0 bis 5>", "einstufung": ..., "hauptursache": ..., "codestelle": {"datei": ..., "zeile": ..., "zitat": "..."}, "empfehlung": ..., "hinweise": ...}"""
+{"score_prozent": ..., "kriterien": [{"name": ..., "abweichung_prozent": ..., "punkte": ..., "gewicht": ...}], "modell_wahrscheinlichkeit": ..., "einstufung": ..., "hauptursache": ..., "codestelle": {"datei": ..., "zeile": ..., "zitat": "..."}, "empfehlung": ..., "hinweise": ...}"""
 
 
 def lade_rohdaten():
@@ -389,22 +380,22 @@ def score_erklaerung(methode, umgebung, berechnung, negativ=True):
     }
 
 
-def anzeigeentscheidung(berechnung, klasse=None, zeile=None):
+def anzeigeentscheidung(berechnung, zeile=None):
     if berechnung["score_prozent"] >= SCHWELLE_STABIL:
         hinweis = None
-        if klasse and str(klasse) != "0":
+        if zeile:
             hinweis = (
                 "KPI-Werte und Stabilitätsscore sind hoch; der Agent vermutet einen Fehler "
                 f"bei Zeile {zeile}, die Messung bestätigt ihn jedoch nicht."
             )
         return {
             "anzeige": "keine Auffälligkeit gemessen",
-            "fehlerklasse_angezeigt": False,
+            "codestelle_angezeigt": False,
             "qualifizierter_hinweis": hinweis,
         }
     return {
         "anzeige": f"Auffälligkeit bestätigt: {berechnung['hauptursache']}",
-        "fehlerklasse_angezeigt": True,
+        "codestelle_angezeigt": True,
         "qualifizierter_hinweis": None,
     }
 
@@ -522,11 +513,6 @@ def lauf(
     faelle = lade_faelle()
     if not faelle:
         raise SystemExit("Kein Fall im Filter - Schreibweise von --varianten pruefen")
-    verteilung = {}
-    for fall in faelle:
-        verteilung[fall["fehlerklasse"]] = verteilung.get(fall["fehlerklasse"], 0) + 1
-    mehrheitsklasse = max(verteilung.values()) / len(faelle)
-
     protokoll = open(antwortdatei, "w", encoding="utf-8") if antwortdatei else None
 
     zeilen = []
@@ -541,23 +527,20 @@ def lauf(
             nachricht = baue_nachricht(
                 fall, berechnung, "voll", snippet=fall["snippet_original"]
             )
-            erwartet = "0"
         else:
             berechnung = berechnung_fuer(fall["methode"], umgebung)
             nachricht = baue_nachricht(fall, berechnung, ansicht)
-            erwartet = fall["fehlerklasse"]
         for runde in range(1, wiederholungen + 1):
             text, nutzung = rufe_modell(nachricht, modell, max_tokens)
             antwort = json_aus_text(text)
             if antwort is None:
                 zahlen = {"gueltig": False}
-                genannt, zit, klasse = None, None, None
+                genannt, zit = None, None
             else:
                 zahlen = pruefe_zahlen(antwort, berechnung)
                 stelle = antwort.get("codestelle") or {}
                 genannt = als_zahl(stelle.get("zeile"))
                 zit = stelle.get("zitat")
-                klasse = str(antwort.get("fehlerklasse", "")).strip()
                 pruefung = bewerte_zeile(genannt, fall, zit)
                 if protokoll is not None:
                     protokoll.write(
@@ -572,7 +555,6 @@ def lauf(
                                 "kontrolle": ist_kontrolle,
                                 "runde": runde,
                                 "modell": modell,
-                                "erwartete_klasse": erwartet,
                                 "messwerte": berechnung["messwerte"],
                                 "modellvorhersage": erklaere_kpi(
                                     berechnung["messwerte"]
@@ -580,9 +562,7 @@ def lauf(
                                 "erklaerung": score_erklaerung(
                                     fall["methode"], umgebung, berechnung
                                 ),
-                                "anzeige": anzeigeentscheidung(
-                                    berechnung, klasse, genannt
-                                ),
+                                "anzeige": anzeigeentscheidung(berechnung, genannt),
                                 "kernzeilen": fall["kernzeilen"],
                                 "geaenderte_zeilen": fall["geaenderte_zeilen"],
                                 "pruefung": pruefung,
@@ -615,9 +595,6 @@ def lauf(
                     {
                         "Fall": f"{fall['projekt']}/{fall['nummer']}",
                         "Runde": runde,
-                        "Klasse": klasse,
-                        "erwartet": erwartet,
-                        "Klasse Treffer": klasse == erwartet,
                         "genannt": pruefung["zeile"],
                         "Abstand": pruefung["abstand"],
                         "exakt Nr.": pruefung["exakt"],
@@ -639,7 +616,7 @@ def lauf(
     print()
     print(tabelle.to_string(index=False))
     print()
-    for spalte in ["Klasse Treffer", "exakt Nr.", "nah Nr.", "exakt Zitat"]:
+    for spalte in ["exakt Nr.", "nah Nr.", "exakt Zitat"]:
         print(
             f"{spalte:18s}",
             round(tabelle[spalte].mean(), 3),
@@ -648,15 +625,9 @@ def lauf(
     print("JSON gültig:      ", round(tabelle["JSON"].mean(), 3))
     print("Zahlen übernommen:", round(tabelle["Zahlen"].mean(), 3))
     print()
-    print(
-        "Bezugsgrößen Fehlerklasse: Mehrheitsklasse",
-        round(mehrheitsklasse, 3),
-        "| Zufall bei fünf Klassen 0,200",
-    )
-    print()
     if wiederholungen > 1:
         print("Streuung über die Wiederholungen (Mittel je Runde):")
-        for spalte in ["Klasse Treffer", "exakt Nr.", "nah Nr."]:
+        for spalte in ["exakt Nr.", "nah Nr."]:
             werte = tabelle.groupby("Runde")[spalte].mean()
             print(
                 f"  {spalte:18s} {round(werte.mean(), 3)} +/- {round(werte.std(), 3)}"
@@ -726,7 +697,7 @@ def main():
         erklaerung = score_erklaerung(fall["methode"], args.umgebung, berechnung)
         erklaerung["modellvorhersage"] = erklaere_kpi(berechnung["messwerte"])
         erklaerung["anzeige"] = anzeigeentscheidung(
-            berechnung, fall["fehlerklasse"], (fall["kernzeilen"] or [None])[0]
+            berechnung, (fall["kernzeilen"] or [None])[0]
         )
         print(json.dumps(erklaerung, ensure_ascii=False, indent=2))
         return

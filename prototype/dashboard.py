@@ -47,6 +47,20 @@ def protokollkandidaten():
     return sorted(pfad for pfad in MODULORDNER.glob("*.jsonl") if ist_protokoll(pfad))
 
 
+def treffertext(pruefung):
+    if not pruefung:
+        return ""
+    if pruefung.get("exakt"):
+        return "exakt"
+    if pruefung.get("nah"):
+        return "nah"
+    if pruefung.get("region_weit"):
+        return "Region"
+    if pruefung.get("zeile"):
+        return "außerhalb"
+    return "keine Zeile"
+
+
 def uebersichtstabelle(zeilen):
     return pd.DataFrame(
         [
@@ -62,10 +76,12 @@ def uebersichtstabelle(zeilen):
                 ],
                 "Modellurteil": zeile["modellvorhersage"]["urteil"],
                 "Anzeige": zeile["anzeige"]["anzeige"],
-                "Agentenklasse": str(
-                    (zeile.get("antwort") or {}).get("fehlerklasse", "")
+                "Vermutete Zeile": str(
+                    ((zeile.get("antwort") or {}).get("codestelle") or {}).get(
+                        "zeile", ""
+                    )
                 ),
-                "Erwartete Klasse": str(zeile.get("erwartete_klasse", "")),
+                "Treffer": treffertext(zeile.get("pruefung") or {}),
             }
             for zeile in zeilen
         ]
@@ -293,17 +309,16 @@ def agentenblock(zeile):
         st.warning(anzeige["qualifizierter_hinweis"])
     st.markdown(zeile.get("begruendung") or "_keine Prosa überliefert_")
     antwort = zeile.get("antwort") or {}
-    spalten = st.columns(3)
-    spalten[0].metric("Fehlerklasse", str(antwort.get("fehlerklasse", "")))
     stelle = antwort.get("codestelle") or {}
-    spalten[1].metric("Genannte Zeile", str(stelle.get("zeile", "")))
-    spalten[2].metric("Erwartete Klasse", str(zeile.get("erwartete_klasse", "")))
+    pruefung = zeile.get("pruefung") or {}
+    spalten = st.columns(3)
+    spalten[0].metric("Vermutete Zeile", str(stelle.get("zeile", "")))
+    spalten[1].metric("Kernzeile(n)", str(zeile.get("kernzeilen") or []))
+    spalten[2].metric("Treffer", treffertext(pruefung))
     if antwort.get("empfehlung"):
         st.info(antwort["empfehlung"])
-    pruefung = zeile.get("pruefung") or {}
     st.caption(
         f"Geänderte Zeilen: {zeile.get('geaenderte_zeilen')} · "
-        f"Kernzeilen: {pruefung.get('kernzeilen')} · "
         f"Abstand: {pruefung.get('abstand')} · "
         f"Zitat exakt: {pruefung.get('exakt_zitat')}"
     )
