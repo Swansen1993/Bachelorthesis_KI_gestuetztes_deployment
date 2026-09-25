@@ -12,13 +12,8 @@ import pandas as pd
 BUCKET = "kpi-save-bucket-415221799955-eu-central-1-an"
 REGION = "eu-central-1"
 EXCLUDE_PREFIXES = ("v1/",)
-OUT_DIR = (
-    pathlib.Path(
-        "/Users/svenniederlohner/projects/Bachelorthesis_KI_gestuetztes_deployment"
-    )
-    / "export_kpis"
-    / "csv_kpis"
-)
+PROJEKTORDNER = pathlib.Path(__file__).resolve().parent.parent
+OUT_DIR = PROJEKTORDNER / "export_kpis" / "csv_kpis"
 COLUMNS = [
     "variant",
     "messung",

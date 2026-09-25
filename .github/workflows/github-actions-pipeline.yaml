@@ -302,8 +302,10 @@ jobs:
       - name: Agenten-Lauf (Harness)
         shell: bash
         run: |-
+          BEDINGUNGEN="diff voll kontrolle"
+          if [ "$NEGATIV_KAMPAGNE" = "false" ]; then BEDINGUNGEN="kontrolle"; fi
           for U in $AGENT_UMGEBUNGEN; do
-            for BEDINGUNG in diff voll kontrolle; do
+            for BEDINGUNG in $BEDINGUNGEN; do
               ZUSATZ="--ansicht diff"
               if [ "$BEDINGUNG" = "voll" ]; then ZUSATZ="--ansicht voll"; fi
               if [ "$BEDINGUNG" = "kontrolle" ]; then ZUSATZ="--kontrolle"; fi
