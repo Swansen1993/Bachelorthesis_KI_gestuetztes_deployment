@@ -145,7 +145,7 @@ SYSTEM_PROMPT = """Du bist ein KI-Agent zur Bewertung der Stabilität von Code-�
 2. Vergleiche ausschließlich mit der Referenz derselben Methode und Umgebungsstufe.
 3. Benenne als Hauptursache genau das Kriterium mit dem größten Punktverlust und belege es mit den Zahlen. Erkläre den Punktwert außerdem anhand der Beiträge der Kriterien, also Punkte mal Gewicht. Enthält die Bewertung Hinweise, führe sie an – insbesondere den Hinweis, dass ein Latenzanstieg unter der Mindestabweichung liegt und das Kriterium deshalb als unauffällig gilt.
 4. Wenn die Fehlerquote auffällt, führe sie als Lastphänomen auf, nicht als Fehler der Änderung.
-5. Nenne genau eine Codezeile als Ursache, und zwar eine, die im übergebenen Ausschnitt steht. Gib dazu die Zeilennummer und den vollständigen Wortlaut dieser Zeile an. Zeigt der Ausschnitt keine Auffälligkeit, lass `codestelle` leer und erfinde keinen Fehler.
+5. Nenne genau eine Codezeile als Ursache, und zwar eine, die im übergebenen Ausschnitt steht; gib dazu die Zeilennummer und den vollständigen Wortlaut dieser Zeile an. Das gilt auch, wenn der Ausschnitt die vollständige Methode zeigt: Benenne dort die Zeile, die den gemessenen Effekt erklärt — der Hinweis, dass nicht alle Zeilen neu sind, entbindet dich nicht davon. Nur wenn die übergebene Bewertung keine Auffälligkeit zeigt, setze `"codestelle": null` und erfinde keinen Fehler.
 6. Die Nachricht kann eine Modell-Einschätzung enthalten (LightGBM, mit Beiträgen je Kennzahl). Nutze sie als Erklärungshilfe für den abweichenden Score, nicht als Messwert, und halte sie begrifflich vom Punktwert der Matrix getrennt.
 
 Vorgehen: Analysiere zuerst in zwei bis drei Sätzen, welcher Mechanismus den gemessenen Effekt erklärt. Prüfe dabei, welche Zeilen gegenüber dem unveränderten Code neu sind, und benenne die Zeile, die diesen Mechanismus trägt. Gib erst danach das JSON aus:
@@ -480,11 +480,16 @@ def lauf(
     kontrolle=False,
     antwortdatei=None,
     auch_gesund=False,
+    anhaengen=False,
 ):
     faelle = lade_faelle()
     if not faelle:
         raise SystemExit("Kein Fall im Filter - Schreibweise von --varianten pruefen")
-    protokoll = open(antwortdatei, "w", encoding="utf-8") if antwortdatei else None
+    protokoll = (
+        open(antwortdatei, "a" if anhaengen else "w", encoding="utf-8")
+        if antwortdatei
+        else None
+    )
 
     zeilen = []
 
@@ -535,7 +540,10 @@ def lauf(
                                 "messwerte": berechnung["messwerte"],
                                 "modellvorhersage": vorhersage,
                                 "erklaerung": score_erklaerung(
-                                    fall["methode"], umgebung, berechnung
+                                    fall["methode"],
+                                    umgebung,
+                                    berechnung,
+                                    negativ=not ist_kontrolle,
                                 ),
                                 "anzeige": anzeigeentscheidung(berechnung, genannt),
                                 "kernzeilen": fall["kernzeilen"],
@@ -636,6 +644,7 @@ def main():
     parser.add_argument("--erklaerung", action="store_true")
     parser.add_argument("--nummer")
     parser.add_argument("--umgebung")
+    parser.add_argument("--umgebungen")
     parser.add_argument("--antwort")
     parser.add_argument("--rohdaten")
     parser.add_argument("--varianten")
@@ -650,18 +659,26 @@ def main():
         }
 
     if args.lauf:
-        if not args.umgebung:
-            raise SystemExit("--umgebung erforderlich für --lauf (z. B. extreme)")
-        lauf(
-            args.modell,
-            args.umgebung,
-            args.max_tokens,
-            args.ansicht,
-            args.wiederholungen,
-            args.kontrolle,
-            args.antwortdatei,
-            args.auch_gesund,
-        )
+        if args.umgebungen:
+            stufen = args.umgebungen.split()
+        elif args.umgebung:
+            stufen = [args.umgebung]
+        else:
+            raise SystemExit(
+                "--umgebung oder --umgebungen erforderlich für --lauf (z. B. extreme)"
+            )
+        for nummer, stufe in enumerate(stufen):
+            lauf(
+                args.modell,
+                stufe,
+                args.max_tokens,
+                args.ansicht,
+                args.wiederholungen,
+                args.kontrolle,
+                args.antwortdatei,
+                args.auch_gesund,
+                nummer > 0,
+            )
         return
 
     if args.erklaerung:

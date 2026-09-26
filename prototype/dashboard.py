@@ -99,10 +99,6 @@ def fallschluessel(zeile):
 
 
 def fallbeschriftungen(zeilen):
-    anzahl = {}
-    for zeile in zeilen:
-        schluessel = fallschluessel(zeile)
-        anzahl[schluessel] = anzahl.get(schluessel, 0) + 1
     beschriftungen = []
     for zeile in zeilen:
         text = (
@@ -110,8 +106,6 @@ def fallbeschriftungen(zeilen):
             f"{zeile['umgebung']} · "
             f"{'unverändert' if zeile.get('kontrolle') else 'verändert'}"
         )
-        if anzahl[fallschluessel(zeile)] > 1:
-            text += f" · Runde {zeile.get('runde', 1)}"
         beschriftungen.append(text)
     return beschriftungen
 
@@ -239,7 +233,7 @@ def kopfzeile(zeile):
         f"Code {'unverändert' if zeile.get('kontrolle') else 'verändert'} · "
         f"Datei {zeile.get('datei') or 'unbekannt'} · "
         f"Umgebungsstufe {zeile['umgebung']} · "
-        f"Ansicht {zeile.get('ansicht')} · Runde {zeile.get('runde')} · "
+        f"Ansicht {zeile.get('ansicht')} · "
         f"Modell {zeile.get('modell')}"
     )
 
@@ -379,12 +373,17 @@ def beobachtungsfenster():
 st.title("Stabilitätsbewertung der Pipeline")
 
 kandidaten = protokollkandidaten()
-vorgabe = str(kandidaten[-1]) if kandidaten else ""
-eingabe = st.sidebar.text_input("Protokolldatei", value=vorgabe)
 if kandidaten:
-    st.sidebar.caption(
-        "Gefundene Protokolle:\n\n" + "\n\n".join(p.name for p in kandidaten)
+    auswahl = st.sidebar.selectbox(
+        "Protokolldatei",
+        kandidaten,
+        index=len(kandidaten) - 1,
+        format_func=lambda pfad: pfad.name,
     )
+    eingabe = str(auswahl)
+else:
+    eingabe = st.sidebar.text_input("Protokolldatei", value="")
+
 
 st.session_state.setdefault("beobachten", False)
 st.session_state.setdefault("meldungen", [])
@@ -420,6 +419,10 @@ if not zeilen:
     st.warning("Die Datei enthält keine Zeilen.")
     st.stop()
 
+stufen = ["alle"] + sorted({zeile.get("umgebung") for zeile in zeilen})
+wunsch = st.sidebar.selectbox("Umgebungsstufe", stufen)
+if wunsch != "alle":
+    zeilen = [zeile for zeile in zeilen if zeile.get("umgebung") == wunsch]
 st.sidebar.caption(f"{len(zeilen)} Zeilen in {pfad.name}")
 
 uebersicht, einzelner = st.tabs(["Übersicht", "Einzelfall"])
