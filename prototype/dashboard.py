@@ -61,6 +61,10 @@ def treffertext(pruefung):
     return "keine Zeile"
 
 
+def urteilstext(urteil):
+    return "instabil" if urteil == "instabil" else "stabil"
+
+
 def uebersichtstabelle(zeilen):
     return pd.DataFrame(
         [
@@ -74,7 +78,7 @@ def uebersichtstabelle(zeilen):
                 "Wahrscheinlichkeit instabil in Prozent": zeile["modellvorhersage"][
                     "wahrscheinlichkeit_mutiert_prozent"
                 ],
-                "Modellurteil": zeile["modellvorhersage"]["urteil"],
+                "Modellurteil": urteilstext(zeile["modellvorhersage"]["urteil"]),
                 "Anzeige": zeile["anzeige"]["anzeige"],
                 "Vermutete Zeile": str(
                     ((zeile.get("antwort") or {}).get("codestelle") or {}).get(
@@ -140,8 +144,12 @@ def gegenueberstellung(zeilen):
                 "Instabil unverändert": unveraendert["modellvorhersage"][
                     "wahrscheinlichkeit_mutiert_prozent"
                 ],
-                "Urteil verändert": veraendert["modellvorhersage"]["urteil"],
-                "Urteil unverändert": unveraendert["modellvorhersage"]["urteil"],
+                "Urteil verändert": urteilstext(
+                    veraendert["modellvorhersage"]["urteil"]
+                ),
+                "Urteil unverändert": urteilstext(
+                    unveraendert["modellvorhersage"]["urteil"]
+                ),
                 "Fehlalarm": bool(
                     unveraendert["modellvorhersage"]["urteil"] == "instabil"
                 ),
@@ -196,7 +204,7 @@ def zerlegungsdaten(block):
                 "Schritt": eintrag["merkmal"],
                 "von": lauf,
                 "bis": neu,
-                "Art": eintrag["spricht_fuer"],
+                "Art": urteilstext(eintrag["spricht_fuer"]),
             }
         )
         lauf = neu
@@ -216,7 +224,7 @@ def zerlegungsbild(block):
             color=alt.Color(
                 "Art",
                 scale=alt.Scale(
-                    domain=["instabil", "nicht instabil", "Ausgangswert", "Summe"],
+                    domain=["instabil", "stabil", "Ausgangswert", "Summe"],
                     range=[FARBE_INSTABIL, FARBE_STABIL, FARBE_START, FARBE_SUMME],
                 ),
                 legend=None,
@@ -263,7 +271,7 @@ def modellblock(zeile):
         "Wahrscheinlichkeit instabil",
         f"{block['wahrscheinlichkeit_mutiert_prozent']} %",
     )
-    spalten[1].metric("Urteil des Modells", block["urteil"])
+    spalten[1].metric("Urteil des Modells", urteilstext(block["urteil"]))
     spalten[2].metric(
         "Entscheidungsgrenze", f"{block['entscheidungsgrenze_prozent']} %"
     )
@@ -274,7 +282,7 @@ def modellblock(zeile):
                 {
                     "Beitrag": eintrag["merkmal"],
                     "Wert": eintrag["beitrag"],
-                    "Spricht für": eintrag["spricht_fuer"],
+                    "Spricht für": urteilstext(eintrag["spricht_fuer"]),
                 }
                 for eintrag in block["beitraege"]
             ]
