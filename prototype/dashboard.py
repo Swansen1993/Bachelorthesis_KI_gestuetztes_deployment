@@ -364,12 +364,16 @@ def beobachtungsfenster():
 st.title("Stabilitätsbewertung der Pipeline")
 
 kandidaten = protokollkandidaten()
-vorgabe = str(kandidaten[-1]) if kandidaten else ""
-eingabe = st.sidebar.text_input("Protokolldatei", value=vorgabe)
 if kandidaten:
-    st.sidebar.caption(
-        "Gefundene Protokolle:\n\n" + "\n\n".join(p.name for p in kandidaten)
+    auswahl = st.sidebar.selectbox(
+        "Protokolldatei",
+        kandidaten,
+        index=len(kandidaten) - 1,
+        format_func=lambda pfad: pfad.name,
     )
+    eingabe = str(auswahl)
+else:
+    eingabe = st.sidebar.text_input("Protokolldatei", value="")
 
 st.session_state.setdefault("beobachten", False)
 st.session_state.setdefault("meldungen", [])
