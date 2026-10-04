@@ -62,10 +62,6 @@ def uebersichtstabelle(zeilen):
                 ],
                 "Modellurteil": zeile["modellvorhersage"]["urteil"],
                 "Anzeige": zeile["anzeige"]["anzeige"],
-                "Agentenklasse": str(
-                    (zeile.get("antwort") or {}).get("fehlerklasse", "")
-                ),
-                "Erwartete Klasse": str(zeile.get("erwartete_klasse", "")),
             }
             for zeile in zeilen
         ]
@@ -293,11 +289,8 @@ def agentenblock(zeile):
         st.warning(anzeige["qualifizierter_hinweis"])
     st.markdown(zeile.get("begruendung") or "_keine Prosa überliefert_")
     antwort = zeile.get("antwort") or {}
-    spalten = st.columns(3)
-    spalten[0].metric("Fehlerklasse", str(antwort.get("fehlerklasse", "")))
     stelle = antwort.get("codestelle") or {}
-    spalten[1].metric("Genannte Zeile", str(stelle.get("zeile", "")))
-    spalten[2].metric("Erwartete Klasse", str(zeile.get("erwartete_klasse", "")))
+    st.metric("Genannte Zeile", str(stelle.get("zeile", "")))
     if antwort.get("empfehlung"):
         st.info(antwort["empfehlung"])
     pruefung = zeile.get("pruefung") or {}
