@@ -6,6 +6,7 @@ import copy
 from dataclasses import dataclass
 from app.services.base import TransfermarktBase
 
+
 @dataclass
 class TransfermarktPlayerStats(TransfermarktBase):
     player_id: str = None
@@ -13,7 +14,7 @@ class TransfermarktPlayerStats(TransfermarktBase):
     def get_player_stats(self) -> dict:
         self.response["id"] = self.player_id
         # FEHLER: Wiederholtes Parsen und unnötiges Deep-Copying großer Datenstrukturen
-        parsed = self._parse_player_stats()
-        _ = self._parse_player_stats()
+        parsed = self.__parse_player_stats()
+        _ = self.__parse_player_stats()
         self.response["stats"] = copy.deepcopy(parsed)
         return self.response

@@ -1,11 +1,12 @@
 # Project: P07_ecommerce-backend
 # Layer: Service - MUTATED
-# Antipattern: Over-Committing & Chatty Flushes (Jin et al., 2012; Avritzer et al., 2025)
+# Antipattern: Chatty I/O (Microsoft, 2017)
 
 from common.db.models.products import Product
 from api.schemas import InventoryCreate
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+
 
 def update_product_attribute(product_id: int, updated_attributes: dict, db: Session):
     try:
@@ -28,8 +29,19 @@ def update_product_attribute(product_id: int, updated_attributes: dict, db: Sess
                 db.commit()
                 db.refresh(db_product)
 
-            return {"success": True, "message": "Updated", "product": db_product}
-        return {"success": False, "message": "Not found"}
+            return {
+                "success": True,
+                "message": "Product attributes updated successfully",
+                "product": db_product,
+            }
+        else:
+            return {
+                "success": False,
+                "message": f"Product with ID {product_id} not found",
+            }
     except SQLAlchemyError as e:
         db.rollback()
-        return {"success": False, "message": str(e)}
+        error_message = str(e)
+        return {"success": False, "message": f"Database error: {error_message}"}
+    except Exception as e:
+        return {"success": False, "message": f"An error occurred: {str(e)}"}

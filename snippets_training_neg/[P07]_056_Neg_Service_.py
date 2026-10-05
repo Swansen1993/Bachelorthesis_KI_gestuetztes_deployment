@@ -6,14 +6,21 @@ import os
 import requests
 from http import HTTPStatus as HttpStatus
 from common.db.models.sales import Sales
-from common.custom_exceptions import ProductNotFoundException, ProductInventoryUpdateException, ProductOutofStockException, InsufficientInventoryException
+from common.custom_exceptions import (
+    ProductNotFoundException,
+    ProductInventoryUpdateException,
+    ProductOutofStockException,
+    InsufficientInventoryException,
+)
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+
 
 def create_product_sale_transaction(sale: Sales, db: Session):
     try:
         db_sale = Sales(**sale.dict())
-        db.add(db_sale)  # FEHLER: Transaktion frühzeitig öffnen und Lock setzen
+        db.add(db_sale)
+        db.connection()  # FEHLER: Transaktion frühzeitig öffnen und Lock setzen
 
         # FEHLER: Synchrone Remote-HTTP-Calls bei geöffneter Transaktion halten Connection-Pools blockiert
         product_service_response = get_product_details_by_id(db_sale.product_id)
@@ -24,11 +31,17 @@ def create_product_sale_transaction(sale: Sales, db: Session):
         current_inventory_quantity = product_service_response.get("current_inventory")
 
         if current_inventory_quantity >= db_sale.units_sold:
-            set_quantity_after_decrement = current_inventory_quantity - db_sale.units_sold
-            product_update_response = decrement_product_inventory(set_quantity_after_decrement, db_sale.product_id)
+            set_quantity_after_decrement = (
+                current_inventory_quantity - db_sale.units_sold
+            )
+            product_update_response = decrement_product_inventory(
+                set_quantity_after_decrement, db_sale.product_id
+            )
             if product_update_response.status_code != HttpStatus.OK:
-                raise ProductInventoryUpdateException("Error updating product inventory")
-            
+                raise ProductInventoryUpdateException(
+                    "Error updating product inventory"
+                )
+
             db_sale.total_price = product_service_response["price"] * db_sale.units_sold
             db_sale.revenue = db_sale.total_price
             db.commit()

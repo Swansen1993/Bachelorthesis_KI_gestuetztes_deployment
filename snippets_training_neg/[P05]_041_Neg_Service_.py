@@ -1,6 +1,6 @@
 # Project: P05_fastapi-clean-example
 # Layer: Service (Use-Case) - MUTATED
-# Antipattern: Uncoordinated Functions / Excessive Reload (Jin et al., 2012)
+# Antipattern: Uncoordinated Functions  (Jin et al., 2012)
 
 import logging
 from dataclasses import dataclass
@@ -11,22 +11,33 @@ from app.core.commands.ports.user_tx_storage import UserTxStorage
 from app.core.commands.ports.utc_timer import UtcTimer
 from app.core.common.authorization.authorize import authorize
 from app.core.common.authorization.current_user_service import CurrentUserService
-from app.core.common.authorization.permissions import (CanManageRole, CanManageSubordinate, RoleManagementContext, UserManagementContext,)
+from app.core.common.authorization.permissions import (
+    CanManageRole,
+    CanManageSubordinate,
+    RoleManagementContext,
+    UserManagementContext,
+)
 from app.core.common.entities.types_ import UserId, UserRole
 from app.core.common.services.user import UserService
 from app.core.common.value_objects.raw_password import RawPassword
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass(frozen=True, slots=True)
 class SetUserPasswordRequest:
     user_id: UUID
     password: str
 
+
 class SetUserPassword:
     def __init__(
-        self, current_user_service: CurrentUserService, user_tx_storage: UserTxStorage,
-        user_service: UserService, utc_timer: UtcTimer, transaction_manager: TransactionManager
+        self,
+        current_user_service: CurrentUserService,
+        user_tx_storage: UserTxStorage,
+        user_service: UserService,
+        utc_timer: UtcTimer,
+        transaction_manager: TransactionManager,
     ) -> None:
         self._current_user_service = current_user_service
         self._user_tx_storage = user_tx_storage
@@ -37,20 +48,30 @@ class SetUserPassword:
     async def execute(self, request: SetUserPasswordRequest) -> None:
         logger.info("Set user password: started.")
         current_user = await self._current_user_service.get_current_user()
-        authorize(CanManageRole(), context=RoleManagementContext(subject=current_user, target_role=UserRole.USER))
-        
+        authorize(
+            CanManageRole(),
+            context=RoleManagementContext(
+                subject=current_user, target_role=UserRole.USER
+            ),
+        )
+
         user_id = UserId(request.user_id)
         password = RawPassword(request.password)
-        
+
         user = await self._user_tx_storage.get_by_id(user_id, for_update=True)
         if user is None:
             raise UserNotFoundError
 
-        authorize(CanManageSubordinate(), context=UserManagementContext(subject=current_user, target=user))
-        
+        authorize(
+            CanManageSubordinate(),
+            context=UserManagementContext(subject=current_user, target=user),
+        )
+
         # FEHLER: Unnötiges erneutes Laden desselben Users innerhalb derselben Transaktion
         _ = await self._user_tx_storage.get_by_id(user_id, for_update=True)
 
-        await self._user_service.change_password(user, password, now=self._utc_timer.now)
+        await self._user_service.change_password(
+            user, password, now=self._utc_timer.now
+        )
         await self._transaction_manager.commit()
         logger.info("Set user password: done.")

@@ -11,11 +11,14 @@ ModelType = TypeVar("ModelType")
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
 UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 
+
 class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def __init__(self, model: Type[ModelType]) -> None:
         self._model = model
 
-    async def create(self, session: AsyncSession, obj_in: CreateSchemaType) -> ModelType:
+    async def create(
+        self, session: AsyncSession, obj_in: CreateSchemaType
+    ) -> ModelType:
         obj_in_data = dict(obj_in)
         db_obj = self._model(**obj_in_data)
         session.add(db_obj)
@@ -23,17 +26,22 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return db_obj
 
     async def get(self, session: AsyncSession, *args, **kwargs) -> Optional[ModelType]:
-        result = await session.execute(
-            select(self._model).filter(*args).filter_by(**kwargs)
-        )
-        return result.scalars().first()
+        # FEHLER (Excessive Data): Lädt die vollständige Tabelle und filtert in Python
+        result = await session.execute(select(self._model))
+        for row in result.scalars().all():
+            if all(getattr(row, k) == v for k, v in kwargs.items()):
+                return row
+        return None
 
-    # FEHLER (Excessive Data): Ignoriert Pagination; lädt immer die vollständige Tabelle
     async def get_multi(
         self, session: AsyncSession, *args, offset: int = 0, limit: int = 100, **kwargs
     ) -> List[ModelType]:
         result = await session.execute(
-            select(self._model).filter(*args).filter_by(**kwargs)
+            select(self._model)
+            .filter(*args)
+            .filter_by(**kwargs)
+            .offset(offset)
+            .limit(limit)
         )
         return result.scalars().all()
 
@@ -48,7 +56,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db_obj = db_obj or await self.get(session, **kwargs)
         if db_obj is not None:
             obj_data = db_obj.dict()
-            update_data = obj_in if isinstance(obj_in, dict) else obj_in.dict(exclude_unset=True)
+            update_data = (
+                obj_in if isinstance(obj_in, dict) else obj_in.dict(exclude_unset=True)
+            )
             for field in obj_data:
                 if field in update_data:
                     setattr(db_obj, field, update_data[field])

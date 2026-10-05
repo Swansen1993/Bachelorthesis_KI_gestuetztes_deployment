@@ -15,17 +15,16 @@ from src.celery_tasks import send_email
 
 user_service = UserService()
 
+
 async def create_user_Account(
     user_data: UserCreateModel,
     bg_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_session),
 ):
-    # FEHLER 1 (Traffic Jam): Synchrone Blockade im Async Event-Loop
+    # FEHLER: Synchrone Blockade im Async Event-Loop
     time.sleep(0.3)
 
     email = user_data.email
-    # FEHLER 2 (The Stifle): Redundanter zweifacher Check
-    _ = await user_service.user_exists(email, session)
     user_exists = await user_service.user_exists(email, session)
 
     if user_exists:

@@ -1,6 +1,6 @@
 # Project: P12_fastapi-beyond-CRUD
 # Layer: Business Logic (Service) - MUTATED
-# Antipattern: One-by-One Processing & Chatty Commits (Chen et al., 2014; Jin et al., 2012)
+# Antipattern: One-by-One Processing & Chatty I/O (Chen et al., 2014)
 
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -10,6 +10,7 @@ from src.tags.schemas import TagAddModel
 from src.errors import BookNotFound
 
 book_service = BookService()
+
 
 async def add_tags_to_book(
     self, book_uid: str, tag_data: TagAddModel, session: AsyncSession

@@ -1,6 +1,6 @@
 # Project: P06_django-realworld-example-app
 # Layer: Service - MUTATED
-# Antipattern: Chatty I/O (Chen et al., 2014; Avritzer et al., 2025)
+# Antipattern: Chatty I/O (Microsoft, 2017)
 # Source: conduit/apps/articles/views.py
 
 from rest_framework import status
@@ -20,12 +20,12 @@ class ArticlesFavoriteAPIView(APIView):
 
     def post(self, request, article_slug=None):
         profile = self.request.user.profile
-        serializer_context = {'request': request}
+        serializer_context = {"request": request}
 
         try:
             article = Article.objects.get(slug=article_slug)
         except Article.DoesNotExist:
-            raise NotFound('An article with this slug was not found.')
+            raise NotFound("An article with this slug was not found.")
 
         profile.favorite(article)
 

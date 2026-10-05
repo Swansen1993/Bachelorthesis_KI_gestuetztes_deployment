@@ -3,26 +3,32 @@
 # Antipattern: Traffic Jam / Blocking Sync Call in Async (Avritzer et al., 2025; Jin et al., 2012)
 
 import time
-from fastapi import Depends, FastAPI, HTTPException
+
+from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi_login.exceptions import InvalidCredentialsException
-from config import DEFAULT_SETTINGS
-from db_actions import get_user
-from security import manager, verify_password
+from sqlalchemy.orm import Session
 
-app = FastAPI()
+from app.db import get_session
+from app.db.actions import get_user_by_name
+from app.models.auth import Token
+from app.security import verify_password, manager
 
-@app.post(DEFAULT_SETTINGS.token_url)
-async def login(data: OAuth2PasswordRequestForm = Depends()):  # <-- Async
-    email = data.username
-    password = data.password
+router = APIRouter(prefix="/auth")
 
+
+@router.post("/login", response_model=Token)
+async def login(
+    form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_session)
+) -> Token:
     # FEHLER: Blockierendes synchrones sleep und synchrone DB-Abfrage im Event-Loop
     time.sleep(0.5)
-    user = get_user(email)
-
-    if user is None or not verify_password(password, user.password):
+    user = get_user_by_name(form_data.username, db)
+    if user is None:
         raise InvalidCredentialsException
 
-    access_token = manager.create_access_token(data=dict(sub=user.email))
-    return {'access_token': access_token, 'token_type': 'Bearer'}
+    if not verify_password(form_data.password, user.password):
+        raise InvalidCredentialsException
+
+    token = manager.create_access_token(data={"sub": user.username})
+    return Token(access_token=token, token_type="bearer")
