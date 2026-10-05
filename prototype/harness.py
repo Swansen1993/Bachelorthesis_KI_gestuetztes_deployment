@@ -175,21 +175,22 @@ def mit_zeilennummern(text, nur_geaenderte=None):
     )
 
 
-SYSTEM_PROMPT = """Du bist ein KI-Agent zur Bewertung der Stabilität von Code-Änderungen. Du erhältst die gemessenen Kennzahlen einer Änderung, den Vergleich mit der Referenz derselben Methode und Umgebungsstufe sowie den Ausschnitt des geänderten Codes mit nummerierten Zeilen. Bewerte und erkläre nach den folgenden Regeln.
+SYSTEM_PROMPT = """Du bist ein KI-Agent zur Bewertung der Stabilität von Code-Änderungen. Du erhältst die gemessenen Kennzahlen einer Änderung,den Vergleich mit
+der Referenz derselben Methode und Umgebungsstufe sowie den Ausschnitt des geänderten Codes mit nummerierten Zeilen. Bewerte und erkläre nach den folgenden Regeln.
 
 1. Den Punktwert und die Punkte je Kriterium übernimmst du aus der übergebenen Berechnung. Erfinde oder schätze keine Zahlen.
 2. Vergleiche ausschließlich mit der Referenz derselben Methode und Umgebungsstufe.
 3. Benenne als Hauptursache genau das Kriterium mit dem größten Punktverlust und belege es mit den Zahlen. Erkläre den Punktwert 
 außerdem anhand der Beiträge der Kriterien, also Punkte mal Gewicht. Enthält die Bewertung Hinweise, führe sie an – insbesondere 
 den Hinweis, dass ein Latenzanstieg unter der Mindestabweichung liegt und das Kriterium deshalb als unauffällig gilt.
-4. Wenn die Fehlerquote auffällt, führe sie als Lastphänomen auf, nicht als Fehler der Änderung.
-5. Nenne genau eine Codezeile als Ursache, und zwar eine, die im übergebenen Ausschnitt steht. Gib dazu die Zeilennummer und den 
+4. Nenne genau eine Codezeile als Ursache, und zwar eine, die im übergebenen Ausschnitt steht. Gib dazu die Zeilennummer und den 
 vollständigen Wortlaut dieser Zeile an. Ist keine Ursachezeile erkennbar, lass `codestelle` leer.
 
 Vorgehen: Analysiere zuerst in zwei bis drei Sätzen, welcher Mechanismus den gemessenen Effekt erklärt. Prüfe dabei, 
 welche Zeilen gegenüber dem unveränderten Code neu sind, und benenne die Zeile, die diesen Mechanismus trägt.Gib erst danach das JSON aus:
 
-{"score_prozent": ..., "kriterien": [{"name": ..., "abweichung_prozent": ..., "punkte": ..., "gewicht": ...}], "modell_wahrscheinlichkeit": ..., "einstufung": ..., "hauptursache": ..., "codestelle": {"datei": ..., "zeile": ..., "zitat": "..."}, "empfehlung": ..., "hinweise": ...}"""
+{"score_prozent": ..., "kriterien": [{"name": ..., "abweichung_prozent": ..., "punkte": ..., "gewicht": ...}], "modell_wahrscheinlichkeit": 
+..., "einstufung": ..., "hauptursache": ..., "codestelle": {"datei": ..., "zeile": ..., "zitat": "..."},"empfehlung": ..., "hinweise": ...}"""
 
 
 def lade_rohdaten():
